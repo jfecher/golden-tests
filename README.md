@@ -1,6 +1,7 @@
 
 ## Golden Tests
 
+[![Travis (.org)](https://img.shields.io/travis/jfecher/golden-tests)](https://travis-ci.org/github/jfecher/golden-tests)
 [![crates.io](https://img.shields.io/crates/v/goldentests)](https://crates.io/crates/goldentests)
 [![docs.rs](https://docs.rs/goldentests/badge.svg)](https://docs.rs/goldentests)
 
