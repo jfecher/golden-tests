@@ -1,5 +1,3 @@
-#![feature(str_strip)]
-
 //! A testing library utilizing golden tests.
 //!
 //! ### Why golden tests?
@@ -112,6 +110,14 @@ fn find_tests(directory: &Path) -> TestResult<Vec<PathBuf>> {
     Ok(tests)
 }
 
+fn strip_prefix<'a>(s: &'a str, prefix: &str) -> &'a str {
+    if s.starts_with(prefix) {
+        &s[prefix.len()..]
+    } else {
+        s
+    }
+}
+
 fn parse_test(test_path: &PathBuf, config: &TestConfig) -> TestResult<Test> {
     let path = test_path.clone();
     let mut command_line_args = String::new();
@@ -128,10 +134,10 @@ fn parse_test(test_path: &PathBuf, config: &TestConfig) -> TestResult<Test> {
         if line.starts_with(&config.test_line_prefix) {
             // If we're currently reading stdout or stderr, append the line to the expected output
             if state == TestParseState::ReadingExpectedStdout {
-                expected_stdout += line.strip_prefix(&config.test_line_prefix).unwrap();
+                expected_stdout += strip_prefix(line, &config.test_line_prefix);
                 expected_stdout += "\n";
             } else if state == TestParseState::ReadingExpectedStderr {
-                expected_stderr += line.strip_prefix(&config.test_line_prefix).unwrap();
+                expected_stderr += strip_prefix(line, &config.test_line_prefix);
                 expected_stderr += "\n";
 
             // Otherwise, look to see if the line begins with a keyword and if so change state
@@ -139,7 +145,7 @@ fn parse_test(test_path: &PathBuf, config: &TestConfig) -> TestResult<Test> {
 
             // args:
             } else if line.starts_with(&config.test_args_prefix) {
-                command_line_args = line.strip_prefix(&config.test_args_prefix).unwrap().to_string();
+                command_line_args = strip_prefix(line, &config.test_args_prefix).to_string();
 
             // expected stdout:
             } else if line.starts_with(&config.test_stdout_prefix) {
@@ -147,16 +153,16 @@ fn parse_test(test_path: &PathBuf, config: &TestConfig) -> TestResult<Test> {
                 // Append the remainder of the line to the expected stdout.
                 // Both expected_stdout and expected_stderr are trimmed so extra spaces if this is
                 // empty shouldn't matter.
-                expected_stdout += &(line.strip_prefix(&config.test_stdout_prefix).unwrap().to_string() + "\n");
+                expected_stdout += &(strip_prefix(line, &config.test_stdout_prefix).to_string() + "\n");
 
             // expected stderr:
             } else if line.starts_with(&config.test_stderr_prefix) {
                 state = TestParseState::ReadingExpectedStderr;
-                expected_stderr += &(line.strip_prefix(&config.test_stderr_prefix).unwrap().to_string() + "\n");
+                expected_stderr += &(strip_prefix(line, &config.test_stderr_prefix).to_string() + "\n");
 
             // expected exit status:
             } else if line.starts_with(&config.test_exit_status_prefix) {
-                let status = line.strip_prefix(&config.test_exit_status_prefix).unwrap().trim();
+                let status = strip_prefix(line, &config.test_exit_status_prefix).trim();
                 expected_exit_status = Some(status.parse().map_err(TestError::ErrorParsingExitStatus)?);
             }
         } else {
