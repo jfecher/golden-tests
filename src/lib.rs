@@ -143,7 +143,7 @@ fn check_for_differences(output: &Output, test: &Test) -> bool {
     error_count != 0
 }
 
-pub fn run_tests(config: &TestConfig) -> TestResult<()> {
+pub fn run_golden_tests(config: &TestConfig) -> TestResult<()> {
     let files = find_tests(&config.test_path)?;
     let tests = files.iter()
         .map(|file| parse_test(file, config))

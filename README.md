@@ -1,5 +1,5 @@
 
-## golden-tests
+## Golden Tests
 
 Golden tests is a golden file testing library configured so that tests
 can be created and edited from the test files alone without ever touching
@@ -11,7 +11,7 @@ the rust source code of the test.
 
 To get started plop this into your `Cargo.toml`:
 ```toml
-golden-tests = "0.2.0"
+goldentests = "0.2.1"
 ```
 
 And create an integration test in `tests/goldentests.rs`. The specific name
@@ -28,7 +28,7 @@ fn run_golden_tests() -> Result<(), Box<dyn Error>> {
 }
 ```
 
-This will tell golden-tests to find all files recursively in `my-test-path` and
+This will tell goldentests to find all files recursively in `my-test-path` and
 run `target/debug/my-binary` to use the files in some way to produce the expected
 output.  For example, if we're testing a compiler for a C-like language a test
 file for us may look like this:
@@ -46,13 +46,13 @@ an error if the output of the command is not "Hello, World!".
 
 Note that there are test keywords `args:` and `expected stdout:` embedded in the comments.
 This is what the `"// "` parameter was in the rust example. You can change this parameter
-to change the prefix that golden-tests looks for when parsing a file. For most languages,
+to change the prefix that goldentests looks for when parsing a file. For most languages,
 this should be a comment of some kind. E.g. if we were testing haskell, we would use `-- `
 as the test-line prefix.
 
 ### Advanced Usage
 
-Here is the full set of keywords golden-tests looks for in the file:
+Here is the full set of keywords goldentests looks for in the file:
 
 - `args: <single-line-string>`: Anything after this keyword will be used as the command-line arguments for the
   program that was specified when creating the `TestConfig`. Each argument is separated by spaces.
@@ -62,9 +62,9 @@ Here is the full set of keywords golden-tests looks for in the file:
   an appropriate error will be issued with a given diff. Defaults to `""`.
 - `expected stderr: <multi-line-string>`: The same as `expected stdout:` but for the `stdout` stream. Also
   defaults to `""`.
-- `expected exit status: <i32>`: If specified, golden-tests will issue an error if the exit status differs
+- `expected exit status: <i32>`: If specified, goldentests will issue an error if the exit status differs
   to what is expected. Defaults to `None` (exit status is ignored by default).
 
 
 You can even configure the specific keywords used if you want. For any further information,
-check out golden-test's documentation [here]().
+check out goldentest's documentation [here]().
