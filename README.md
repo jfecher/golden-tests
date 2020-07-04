@@ -1,7 +1,8 @@
 
 ## Golden Tests
 
-[![Crates.io](https://img.shields.io/crates/v/goldentests)](https://crates.io/crates/goldentests)
+[![crates.io](https://img.shields.io/crates/v/goldentests)](https://crates.io/crates/goldentests)
+[![docs.rs](https://docs.rs/goldentests/badge.svg)](https://docs.rs/goldentests)
 
 Golden tests is a golden file testing library configured so that tests
 can be created and edited from the test files alone without ever touching
