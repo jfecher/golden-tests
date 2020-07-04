@@ -29,6 +29,8 @@ provide many config examples as tests and ensure that your
 parser was able to read the files with the expected stdout/stderr
 output and exit code.
 
+### Example `cargo test` Output
+
 ![example image](example.png)
 
 ### Getting Started
