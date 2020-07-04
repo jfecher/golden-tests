@@ -19,12 +19,12 @@ doesn't matter as long as the test can be picked up by cargo. A typical usage
 looks like this:
 
 ```rust
-use goldentests::{ TestConfig, run_tests };
+use goldentests::TestConfig;
 
 #[test]
 fn run_golden_tests() -> Result<(), Box<dyn Error>> {
     let config = TestConfig::new("target/debug/my-binary", "my-test-path", "// ");
-    run_tests(&config)
+    config.run_tests()
 }
 ```
 

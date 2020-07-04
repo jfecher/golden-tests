@@ -4,11 +4,11 @@ pub mod config;
 mod error;
 mod diff_printer;
 
+pub use config::TestConfig;
+use diff_printer::DiffPrinter;
+
 use colored::Colorize;
 use difference::Changeset;
-
-use diff_printer::DiffPrinter;
-use config::TestConfig;
 
 use std::fs::File;
 use std::path::{ Path, PathBuf };
@@ -143,34 +143,36 @@ fn check_for_differences(output: &Output, test: &Test) -> bool {
     error_count != 0
 }
 
-pub fn run_golden_tests(config: &TestConfig) -> TestResult<()> {
-    let files = find_tests(&config.test_path)?;
-    let tests = files.iter()
-        .map(|file| parse_test(file, config))
-        .collect::<Vec<_>>();
-
-    let mut failing_tests = 0;
-    for test in tests {
-        let test = test?;
-
-        let mut args = test.command_line_args.trim()
-            .split(" ")
-            .map(|s| s.to_owned())
+impl TestConfig {
+    pub fn run_tests(&self) -> TestResult<()> {
+        let files = find_tests(&self.test_path)?;
+        let tests = files.iter()
+            .map(|file| parse_test(file, self))
             .collect::<Vec<_>>();
 
-        args.push(test.path.to_string_lossy().to_string());
+        let mut failing_tests = 0;
+        for test in tests {
+            let test = test?;
 
-        let command = Command::new(&config.binary_path).args(args).output()?;
-        let new_error = check_for_differences(&command, &test);
-        if new_error {
-            failing_tests += 1;
+            let mut args = test.command_line_args.trim()
+                .split(" ")
+                .map(|s| s.to_owned())
+                .collect::<Vec<_>>();
+
+            args.push(test.path.to_string_lossy().to_string());
+
+            let command = Command::new(&self.binary_path).args(args).output()?;
+            let new_error = check_for_differences(&command, &test);
+            if new_error {
+                failing_tests += 1;
+            }
         }
-    }
 
-    if failing_tests != 0 {
-        println!("{} {} tests are failing\n", failing_tests.to_string().red(), "golden".bright_yellow());
-        Err(Box::new(error::TestError::ExpectedOutputDiffers))
-    } else {
-        Ok(())
+        if failing_tests != 0 {
+            println!("{} {} tests are failing\n", failing_tests.to_string().red(), "golden".bright_yellow());
+            Err(Box::new(error::TestError::ExpectedOutputDiffers))
+        } else {
+            Ok(())
+        }
     }
 }
