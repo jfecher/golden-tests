@@ -8,13 +8,34 @@ Golden tests is a golden file testing library configured so that tests
 can be created and edited from the test files alone without ever touching
 the rust source code of the test.
 
+### Why golden tests?
+
+Golden tests allow you to specify the output of
+some command within a file and automatically ensure
+that that output doesn't change. If it does, goldentests
+will show an error-diff showing the expected and actual
+output. This way, whenever the output of something changes
+a human can see the change and decide if it should be kept
+or is a bug and should be reverted.
+
+### What are golden tests useful for?
+
+Golden tests are especially useful for applications that
+take a file as input and produce output of some kind. For
+example: compilers and config-parsers (well, parsers in general)
+are two such applications that can benefit form automated golden
+tests. In the case of a config parser, you would be able to
+provide many config examples as tests and ensure that your
+parser was able to read the files with the expected stdout/stderr
+output and exit code.
+
 ![example image](example.png)
 
 ### Getting Started
 
 To get started plop this into your `Cargo.toml`:
 ```toml
-goldentests = "0.2.1"
+goldentests = "0.3.0"
 ```
 
 And create an integration test in `tests/goldentests.rs`. The specific name
