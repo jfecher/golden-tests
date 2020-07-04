@@ -28,10 +28,10 @@
 //! Include a test in your program that looks something like this:
 //!
 //! ```rust
-//! use goldentests::TestConfig;
+//! use goldentests::{ TestConfig, TestResult };
 //! 
 //! #[test]
-//! fn run_goldentests() -> Result<(), Box<dyn Error>> {
+//! fn run_goldentests() -> TestResult<()> {
 //!     // Replace "// " with your language's/parser's comment syntax.
 //!     // This tells golden tests to embed its keywords in lines beginning with "// "
 //!     let config = TestConfig::new("target/debug/my-binary", "directory/with/tests", "// ");
@@ -63,10 +63,11 @@
 //! Check out the documentation in `TestConfig` for optional configuration.
 
 pub mod config;
-mod error;
+pub mod error;
 mod diff_printer;
 
 pub use config::TestConfig;
+pub use error::TestError;
 use diff_printer::DiffPrinter;
 
 use colored::Colorize;
@@ -76,10 +77,9 @@ use shlex;
 use std::fs::File;
 use std::path::{ Path, PathBuf };
 use std::io::Read;
-use std::error::Error;
 use std::process::{ Command, Output };
 
-type TestResult<T> = Result<T, Box<dyn Error>>;
+pub type TestResult<T> = Result<T, error::TestError>;
 
 struct Test {
     path: PathBuf,
@@ -99,8 +99,8 @@ enum TestParseState {
 fn find_tests(directory: &Path) -> TestResult<Vec<PathBuf>> {
     let mut tests = vec![];
     if directory.is_dir() {
-        for entry in std::fs::read_dir(directory)? {
-            let entry = entry?;
+        for entry in std::fs::read_dir(directory).map_err(TestError::IoError)? {
+            let entry = entry.map_err(TestError::IoError)?;
             let path = entry.path();
             if path.is_dir() {
                 tests.append(&mut find_tests(&path)?);
@@ -119,9 +119,9 @@ fn parse_test(test_path: &PathBuf, config: &TestConfig) -> TestResult<Test> {
     let mut expected_stderr = String::new();
     let mut expected_exit_status = None;
 
-    let mut file = File::open(test_path)?;
+    let mut file = File::open(test_path).map_err(TestError::IoError)?;
     let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
+    file.read_to_string(&mut contents).map_err(TestError::IoError)?;
 
     let mut state = TestParseState::Neutral;
     for line in contents.lines() {
@@ -157,7 +157,7 @@ fn parse_test(test_path: &PathBuf, config: &TestConfig) -> TestResult<Test> {
             // expected exit status:
             } else if line.starts_with(&config.test_exit_status_prefix) {
                 let status = line.strip_prefix(&config.test_exit_status_prefix).unwrap().trim();
-                expected_exit_status = Some(status.parse()?);
+                expected_exit_status = Some(status.parse().map_err(TestError::ErrorParsingExitStatus)?);
             }
         } else {
             state = TestParseState::Neutral;
@@ -228,7 +228,7 @@ impl TestConfig {
 
             args.push(test.path.to_string_lossy().to_string());
 
-            let output = Command::new(&self.binary_path).args(args).output()?;
+            let output = Command::new(&self.binary_path).args(args).output().map_err(TestError::IoError)?;
             let new_error = check_for_differences(&output, &test);
             if new_error {
                 failing_tests += 1;
@@ -237,7 +237,7 @@ impl TestConfig {
 
         if failing_tests != 0 {
             println!("{} {} tests are failing\n", failing_tests.to_string().red(), "golden".bright_yellow());
-            Err(Box::new(error::TestError::ExpectedOutputDiffers))
+            Err(TestError::ExpectedOutputDiffers)
         } else {
             Ok(())
         }

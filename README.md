@@ -35,7 +35,7 @@ output and exit code.
 
 To get started plop this into your `Cargo.toml`:
 ```toml
-goldentests = "0.3.0"
+goldentests = "0.3"
 ```
 
 And create an integration test in `tests/goldentests.rs`. The specific name
@@ -43,10 +43,10 @@ doesn't matter as long as the test can be picked up by cargo. A typical usage
 looks like this:
 
 ```rust
-use goldentests::TestConfig;
+use goldentests::{ TestConfig, TestResult };
 
 #[test]
-fn run_golden_tests() -> Result<(), Box<dyn Error>> {
+fn run_golden_tests() -> TestResult<()> {
     let config = TestConfig::new("target/debug/my-binary", "my-test-path", "// ");
     config.run_tests()
 }

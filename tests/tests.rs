@@ -1,8 +1,7 @@
-use goldentests::TestConfig;
-use std::error::Error;
+use goldentests::{ TestConfig, TestResult };
 
 #[test]
-fn run_goldentests() -> Result<(), Box<dyn Error>> {
+fn run_goldentests() -> TestResult<()> {
     let config = TestConfig::new("python", "examples", "# ");
     config.run_tests()
 }

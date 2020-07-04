@@ -4,6 +4,8 @@ use std::error::Error;
 #[derive(Debug)]
 pub enum TestError {
     ExpectedOutputDiffers,
+    IoError(std::io::Error),
+    ErrorParsingExitStatus(std::num::ParseIntError),
 }
 
 // This isn't displayed when running tests via 'cargo test' anyway
