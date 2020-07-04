@@ -5,7 +5,7 @@ Golden tests is a golden file testing library configured so that tests
 can be created and edited from the test files alone without ever touching
 the rust source code of the test.
 
-[example](example.png)
+![example image](example.png)
 
 ### Getting Started
 
