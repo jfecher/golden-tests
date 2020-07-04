@@ -69,4 +69,4 @@ Here is the full set of keywords goldentests looks for in the file:
 
 
 You can even configure the specific keywords used if you want. For any further information,
-check out goldentest's documentation [here]().
+check out goldentest's documentation [here](https://docs.rs/goldentests).
