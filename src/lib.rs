@@ -1,5 +1,19 @@
 #![feature(str_strip)]
 
+//! A testing library utilizing golden tests.
+//!
+//! ### Why golden tests?
+//! Golden tests allow you to specify the output of
+//! some command within a file and automatically ensure
+//! that that output doesn't change. If it does, goldentests
+//! will show an error-diff showing the expected and actual
+//! output. This way, whenever the output of something changes
+//! a human can see the change and decide if it should be kept
+//! or is a bug and should be reverted.
+//!
+//! ### What are golden tests useful for?
+//!
+
 pub mod config;
 mod error;
 mod diff_printer;
@@ -9,6 +23,7 @@ use diff_printer::DiffPrinter;
 
 use colored::Colorize;
 use difference::Changeset;
+use shlex;
 
 use std::fs::File;
 use std::path::{ Path, PathBuf };
@@ -84,16 +99,16 @@ fn parse_test(test_path: &PathBuf, config: &TestConfig) -> TestResult<Test> {
                 // Append the remainder of the line to the expected stdout.
                 // Both expected_stdout and expected_stderr are trimmed so extra spaces if this is
                 // empty shouldn't matter.
-                expected_stdout += &(line.strip_prefix(&config.test_stdout_prefix).unwrap().to_string() + " ");
+                expected_stdout += &(line.strip_prefix(&config.test_stdout_prefix).unwrap().to_string() + "\n");
 
             // expected stderr:
             } else if line.starts_with(&config.test_stderr_prefix) {
                 state = TestParseState::ReadingExpectedStderr;
-                expected_stderr += &(line.strip_prefix(&config.test_stderr_prefix).unwrap().to_string() + " ");
+                expected_stderr += &(line.strip_prefix(&config.test_stderr_prefix).unwrap().to_string() + "\n");
 
             // expected exit status:
             } else if line.starts_with(&config.test_exit_status_prefix) {
-                let status = line.strip_prefix(&config.test_stderr_prefix).unwrap().trim();
+                let status = line.strip_prefix(&config.test_exit_status_prefix).unwrap().trim();
                 expected_exit_status = Some(status.parse()?);
             }
         } else {
@@ -144,6 +159,8 @@ fn check_for_differences(output: &Output, test: &Test) -> bool {
 }
 
 impl TestConfig {
+    /// Recurse through all the files in self.path, parse them all,
+    /// and run the target program with the arguments specified in the file.
     pub fn run_tests(&self) -> TestResult<()> {
         let files = find_tests(&self.test_path)?;
         let tests = files.iter()
@@ -153,16 +170,18 @@ impl TestConfig {
         let mut failing_tests = 0;
         for test in tests {
             let test = test?;
+            let mut args = vec![];
 
-            let mut args = test.command_line_args.trim()
-                .split(" ")
-                .map(|s| s.to_owned())
-                .collect::<Vec<_>>();
+            // Avoid pushing an empty '' arg at the beginning
+            let trimmed_args = test.command_line_args.trim();
+            if !trimmed_args.is_empty() {
+                args = shlex::split(trimmed_args).unwrap();
+            }
 
             args.push(test.path.to_string_lossy().to_string());
 
-            let command = Command::new(&self.binary_path).args(args).output()?;
-            let new_error = check_for_differences(&command, &test);
+            let output = Command::new(&self.binary_path).args(args).output()?;
+            let new_error = check_for_differences(&output, &test);
             if new_error {
                 failing_tests += 1;
             }

@@ -17,3 +17,4 @@ documentation = "https://docs.rs/goldentests"
 [dependencies]
 colored = "1.9"
 difference = "2.0.0"
+shlex = "0.1.1"

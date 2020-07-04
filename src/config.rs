@@ -26,7 +26,7 @@ pub struct TestConfig {
     /// line that does not start with `test_line_prefix`
     ///
     /// Example with `test_line_prefix = "// "` and `test_stdout_prefix = "expected stdout:"`
-    /// ```
+    /// ```rust
     /// // expected stdout:
     /// // first line of stdout
     /// // second line of stdout
@@ -41,7 +41,7 @@ pub struct TestConfig {
     /// line that does not start with `test_line_prefix`
     ///
     /// Example with `test_line_prefix = "-- "` and `test_stderr_prefix = "expected stderr:"`
-    /// ```
+    /// ```haskell
     /// -- expected stderr:
     /// -- first line of stderr
     /// -- second line of stderr
@@ -54,7 +54,7 @@ pub struct TestConfig {
     /// integer after this keyword representing the expected exit status of the given test.
     ///
     /// Example with `test_line_prefix = "; "` and `test_exit_status_prefix = "expected exit status:"`
-    /// ```
+    /// ```rust
     /// // expected exit status: 0
     /// ```
     pub test_exit_status_prefix: String,
@@ -68,14 +68,15 @@ impl TestConfig {
     /// project is called "my-compiler" and our test path is "examples/goldentests".
     /// In that case we can construct a `TestConfig` like so:
     ///
-    /// ```
+    /// ```rust
+    /// use goldentests::TestConfig;
     /// let config = TestConfig::new("target/debug/my-compiler", "examples/goldentests", "// ");
     /// ```
     ///
     /// This will give us the default keywords when parsing our test files which allows
     /// us to write tests such as the following:
     ///
-    /// ```c++
+    /// ```cpp
     /// std::cout << "Hello, World!\n";
     /// std::cerr << "Goodbye, World!\n";
     ///
