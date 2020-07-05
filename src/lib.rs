@@ -170,13 +170,19 @@ fn parse_test(test_path: &PathBuf, config: &TestConfig) -> TestResult<Test> {
         }
     }
 
+    // Remove \r from strings for windows compatibility. This means we
+    // also can't test for any string containing "\r" unless this check
+    // is improved to be more clever (e.g. only removing at the end of a line).
+    let expected_stdout = expected_stdout.replace("\r", "");
+    let expected_stderr = expected_stderr.replace("\r", "");
+
     Ok(Test { path, command_line_args, expected_stdout, expected_stderr, expected_exit_status })
 }
 
 /// Diff the given "stream" and expected contents of the stream.
 /// Returns non-zero on error.
 fn check_for_differences_in_stream(path: &Path, name: &str, stream: &[u8], expected: &str) -> i8 {
-    let output_string = String::from_utf8_lossy(stream);
+    let output_string = String::from_utf8_lossy(stream).replace("\r", "");
     let output = output_string.trim();
     let expected = expected.trim();
 
