@@ -50,7 +50,7 @@ use goldentests::{ TestConfig, TestResult };
 
 #[test]
 fn run_golden_tests() -> TestResult<()> {
-    let config = TestConfig::new("target/debug/my-binary", "my-test-path", "// ");
+    let config = TestConfig::new("target/debug/my-binary", "my-test-path", "// ")?;
     config.run_tests()
 }
 ```

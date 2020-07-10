@@ -32,7 +32,7 @@
 //! fn run_goldentests() -> TestResult<()> {
 //!     // Replace "// " with your language's/parser's comment syntax.
 //!     // This tells golden tests to embed its keywords in lines beginning with "// "
-//!     let config = TestConfig::new("target/debug/my-binary", "directory/with/tests", "// ");
+//!     let config = TestConfig::new("target/debug/my-binary", "directory/with/tests", "// ")?;
 //!     config.run_tests()
 //! }
 //! ```
