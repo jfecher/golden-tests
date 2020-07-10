@@ -1,8 +1,10 @@
+use crate::{error::TestError, TestResult};
+use colored::Colorize;
 use std::path::PathBuf;
 
 pub struct TestConfig {
     /// The binary path to your program, typically "target/debug/myprogram"
-    pub binary_path: String,
+    pub binary_path: PathBuf,
 
     /// The path to the subdirectory containing your tests. This subdirectory will be
     /// searched recursively for all files.
@@ -105,7 +107,11 @@ impl TestConfig {
     ///
     /// If you want to change these default keywords you can also create a TestConfig
     /// via `TestConfig::with_custom_keywords` which will allow you to specify each.
-    pub fn new(binary_path: &str, test_path: &str, test_line_prefix: &str) -> TestConfig {
+    pub fn new<Binary, Tests>(binary_path: Binary, test_path: Tests, test_line_prefix: &str) -> TestResult<TestConfig>
+    where
+        Binary: Into<PathBuf>,
+        Tests: Into<PathBuf>,
+    {
         TestConfig::with_custom_keywords(
             binary_path,
             test_path,
@@ -124,17 +130,33 @@ impl TestConfig {
     ///
     /// If you don't want to change any of the defaults, you can use `TestConfig::new` to construct
     /// a TestConfig with the default keywords (which are listed in its documentation).
-    pub fn with_custom_keywords(binary_path: &str, test_path: &str, test_line_prefix: &str,
+    pub fn with_custom_keywords<Binary, Tests>(binary_path: Binary, test_path: Tests, test_line_prefix: &str,
                                 test_args_prefix: &str, test_stdout_prefix: &str,
-                                test_stderr_prefix: &str, test_exit_status_prefix: &str) -> TestConfig {
-        TestConfig {
-            binary_path:             binary_path.to_string(),
-            test_path:               PathBuf::from(test_path),
-            test_line_prefix:        test_line_prefix.to_string(),
-            test_args_prefix:        test_line_prefix.to_string() + test_args_prefix,
-            test_stdout_prefix:      test_line_prefix.to_string() + test_stdout_prefix,
-            test_stderr_prefix:      test_line_prefix.to_string() + test_stderr_prefix,
-            test_exit_status_prefix: test_line_prefix.to_string() + test_exit_status_prefix,
+                                test_stderr_prefix: &str, test_exit_status_prefix: &str) -> TestResult<TestConfig>
+    where
+        Binary: Into<PathBuf>,
+        Tests: Into<PathBuf>,
+    {
+        let (binary_path, test_path) = (binary_path.into(), test_path.into());
+
+        if !test_path.exists() {
+            println!("{}", format!("the given test path '{}' does not exist", test_path.display()).red());
+
+            Err(TestError::MissingTests(test_path))
+        } else if !test_path.is_dir() {
+            println!("{}", format!("the given test path '{}' is not a directory", test_path.display()).red());
+
+            Err(TestError::ExpectedDirectory(test_path))
+        } else {
+            Ok(TestConfig {
+                binary_path:             binary_path,
+                test_path:               test_path,
+                test_line_prefix:        test_line_prefix.to_string(),
+                test_args_prefix:        test_line_prefix.to_string() + test_args_prefix,
+                test_stdout_prefix:      test_line_prefix.to_string() + test_stdout_prefix,
+                test_stderr_prefix:      test_line_prefix.to_string() + test_stderr_prefix,
+                test_exit_status_prefix: test_line_prefix.to_string() + test_exit_status_prefix,
+            })
         }
     }
 }

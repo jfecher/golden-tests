@@ -94,19 +94,21 @@ enum TestParseState {
     ReadingExpectedStderr,
 }
 
+/// Expects that the given directory is an existing path
 fn find_tests(directory: &Path) -> TestResult<Vec<PathBuf>> {
     let mut tests = vec![];
-    if directory.is_dir() {
-        for entry in std::fs::read_dir(directory).map_err(TestError::IoError)? {
-            let entry = entry.map_err(TestError::IoError)?;
-            let path = entry.path();
-            if path.is_dir() {
-                tests.append(&mut find_tests(&path)?);
-            } else {
-                tests.push(path);
-            }
+
+    for entry in std::fs::read_dir(directory).map_err(TestError::IoError)? {
+        let entry = entry.map_err(TestError::IoError)?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            tests.append(&mut find_tests(&path)?);
+        } else {
+            tests.push(path);
         }
     }
+
     Ok(tests)
 }
 
@@ -225,11 +227,11 @@ impl TestConfig {
         let files = find_tests(&self.test_path)?;
         let tests = files.iter()
             .map(|file| parse_test(file, self))
-            .collect::<Vec<_>>();
+            .collect::<TestResult<Vec<_>>>()?;
 
-        let mut failing_tests = 0;
+        let (mut failing_tests, mut total_tests) = (0, 0);
         for test in tests {
-            let test = test?;
+            print!("goldentesting '{}'... ", &test.path.display());
             let mut args = vec![];
 
             // Avoid pushing an empty '' arg at the beginning
@@ -242,13 +244,25 @@ impl TestConfig {
 
             let output = Command::new(&self.binary_path).args(args).output().map_err(TestError::IoError)?;
             let new_error = check_for_differences(&output, &test);
+
+            total_tests += 1;
             if new_error {
                 failing_tests += 1;
+                println!("{}", "failed".red());
+            } else {
+                println!("{}", "ok".green());
             }
         }
 
+        println!(
+            "ran {} {} tests with {} and {}\n",
+            total_tests,
+            "golden".bright_yellow(),
+            format!("{} passing", total_tests - failing_tests).green(),
+            format!("{} failing", failing_tests).red(),
+        );
+
         if failing_tests != 0 {
-            println!("{} {} tests are failing\n", failing_tests.to_string().red(), "golden".bright_yellow());
             Err(TestError::ExpectedOutputDiffers)
         } else {
             Ok(())
