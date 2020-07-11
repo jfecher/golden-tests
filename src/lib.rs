@@ -58,7 +58,8 @@
 //! # expected stderr: error!
 //! ```
 //!
-//! Check out the documentation in `TestConfig` for optional configuration.
+//! Check out the documentation in `TestConfig` for optional configuration
+//! including verbose output.
 
 pub mod config;
 pub mod error;
@@ -183,7 +184,7 @@ fn parse_test(test_path: &PathBuf, config: &TestConfig) -> TestResult<Test> {
 
 /// Diff the given "stream" and expected contents of the stream.
 /// Returns non-zero on error.
-fn check_for_differences_in_stream(name: &str, stream: &[u8], expected: &str) -> i8 {
+fn check_for_differences_in_stream(name: &str, path: &Path, stream: &[u8], expected: &str) -> i8 {
     let output_string = String::from_utf8_lossy(stream).replace("\r", "");
     let output = output_string.trim();
     let expected = expected.trim();
@@ -191,34 +192,40 @@ fn check_for_differences_in_stream(name: &str, stream: &[u8], expected: &str) ->
     let differences = Changeset::new(expected, output, "\n");
     let distance = differences.distance;
     if distance != 0 {
-        println!("\nActual {} differs from expected {}:\n{}",
-                name, name, DiffPrinter(differences));
+        println!("\n{}: Actual {} differs from expected {}:\n{}",
+            path.to_string_lossy().bright_yellow(), name, name, DiffPrinter(differences));
         1
     } else {
         0
     }
 }
 
-fn check_for_differences(output: &Output, test: &Test) -> bool {
+fn check_for_differences(path: &Path, output: &Output, test: &Test) -> bool {
     let mut error_count = 0;
     if let Some(expected_status) = test.expected_exit_status {
         if let Some(actual_status) = output.status.code() {
             if expected_status != actual_status {
                 error_count += 1;
-                println!("\nExpected an exit status of {} but process returned {}",
-                       expected_status, actual_status);
+                println!("\n{}: Expected an exit status of {} but process returned {}",
+                       path.to_string_lossy().bright_yellow(), expected_status, actual_status);
             }
         } else {
             error_count += 1;
-            println!("\nExpected an exit status of {} but process was terminated by signal instead",
-                    expected_status);
+            println!("\n{}: Expected an exit status of {} but process was terminated by signal instead",
+                    path.to_string_lossy().bright_yellow(), expected_status);
         }
     }
 
-    error_count += check_for_differences_in_stream("stdout", &output.stdout, &test.expected_stdout);
-    error_count += check_for_differences_in_stream("stderr", &output.stderr, &test.expected_stderr);
+    error_count += check_for_differences_in_stream("stdout", path, &output.stdout, &test.expected_stdout);
+    error_count += check_for_differences_in_stream("stderr", path, &output.stderr, &test.expected_stderr);
     error_count != 0
 }
+
+macro_rules! print_verbose {($config:expr, $($output:tt)*) => {
+    if $config.verbose {
+        print!($($output)*)
+    }
+};}
 
 impl TestConfig {
     /// Recurse through all the files in self.path, parse them all,
@@ -231,7 +238,7 @@ impl TestConfig {
 
         let (mut failing_tests, mut total_tests) = (0, 0);
         for test in tests {
-            print!("{}: ", &test.path.to_string_lossy().bright_yellow());
+            print_verbose!(self, "testing {}... ", &test.path.to_string_lossy().bright_yellow());
             let mut args = vec![];
 
             // Avoid pushing an empty '' arg at the beginning
@@ -243,14 +250,14 @@ impl TestConfig {
             args.push(test.path.to_string_lossy().to_string());
 
             let output = Command::new(&self.binary_path).args(args).output().map_err(TestError::IoError)?;
-            let new_error = check_for_differences(&output, &test);
+            let new_error = check_for_differences(&test.path, &output, &test);
 
             total_tests += 1;
             if new_error {
                 failing_tests += 1;
-                println!("{}", "failed\n".red());
+                print_verbose!(self, "{}\n", "failed\n".red());
             } else {
-                println!("{}", "ok".green());
+                print_verbose!(self, "{}\n", "ok".green());
             }
         }
 

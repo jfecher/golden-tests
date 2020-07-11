@@ -17,6 +17,12 @@ pub struct TestConfig {
     /// to be read inside comments at the start of a line.
     pub test_line_prefix: String,
 
+    /// True if goldentests should be more verbose in its output. This is off by
+    /// default and currently enabling this will print a "testing <filename>..."
+    /// before each file while testing which can be useful if you have longer-running
+    /// tests and use --nocapture while running `cargo test`.
+    pub verbose: bool,
+
     /// The "args:" keyword used while parsing tests. Anything after
     /// `test_line_prefix + test_args_prefix` is read in as a space-delimited
     /// argument to the program.
@@ -149,8 +155,9 @@ impl TestConfig {
             Err(TestError::ExpectedDirectory(test_path))
         } else {
             Ok(TestConfig {
-                binary_path:             binary_path,
-                test_path:               test_path,
+                binary_path,
+                test_path,
+                verbose: false,
                 test_line_prefix:        test_line_prefix.to_string(),
                 test_args_prefix:        test_line_prefix.to_string() + test_args_prefix,
                 test_stdout_prefix:      test_line_prefix.to_string() + test_stdout_prefix,
