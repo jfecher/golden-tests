@@ -183,7 +183,7 @@ fn parse_test(test_path: &PathBuf, config: &TestConfig) -> TestResult<Test> {
 
 /// Diff the given "stream" and expected contents of the stream.
 /// Returns non-zero on error.
-fn check_for_differences_in_stream(path: &Path, name: &str, stream: &[u8], expected: &str) -> i8 {
+fn check_for_differences_in_stream(name: &str, stream: &[u8], expected: &str) -> i8 {
     let output_string = String::from_utf8_lossy(stream).replace("\r", "");
     let output = output_string.trim();
     let expected = expected.trim();
@@ -191,8 +191,8 @@ fn check_for_differences_in_stream(path: &Path, name: &str, stream: &[u8], expec
     let differences = Changeset::new(expected, output, "\n");
     let distance = differences.distance;
     if distance != 0 {
-        println!("{}: Actual {} differs from expected {}:\n{}\n",
-                path.display().to_string().bright_yellow(), name, name, DiffPrinter(differences));
+        println!("\nActual {} differs from expected {}:\n{}",
+                name, name, DiffPrinter(differences));
         1
     } else {
         0
@@ -205,18 +205,18 @@ fn check_for_differences(output: &Output, test: &Test) -> bool {
         if let Some(actual_status) = output.status.code() {
             if expected_status != actual_status {
                 error_count += 1;
-                println!("{}: Expected an exit status of {} but process returned {}\n",
-                       test.path.display().to_string().bright_yellow(), expected_status, actual_status);
+                println!("\nExpected an exit status of {} but process returned {}",
+                       expected_status, actual_status);
             }
         } else {
             error_count += 1;
-            println!("{}: Expected an exit status of {} but process was terminated by signal instead\n",
-                    test.path.display().to_string().bright_yellow(), expected_status);
+            println!("\nExpected an exit status of {} but process was terminated by signal instead",
+                    expected_status);
         }
     }
 
-    error_count += check_for_differences_in_stream(&test.path, "stdout", &output.stdout, &test.expected_stdout);
-    error_count += check_for_differences_in_stream(&test.path, "stderr", &output.stderr, &test.expected_stderr);
+    error_count += check_for_differences_in_stream("stdout", &output.stdout, &test.expected_stdout);
+    error_count += check_for_differences_in_stream("stderr", &output.stderr, &test.expected_stderr);
     error_count != 0
 }
 
@@ -231,7 +231,7 @@ impl TestConfig {
 
         let (mut failing_tests, mut total_tests) = (0, 0);
         for test in tests {
-            print!("goldentesting '{}'... ", &test.path.display());
+            print!("{}: ", &test.path.to_string_lossy().bright_yellow());
             let mut args = vec![];
 
             // Avoid pushing an empty '' arg at the beginning
@@ -248,7 +248,7 @@ impl TestConfig {
             total_tests += 1;
             if new_error {
                 failing_tests += 1;
-                println!("{}", "failed".red());
+                println!("{}", "failed\n".red());
             } else {
                 println!("{}", "ok".green());
             }
