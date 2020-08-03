@@ -4,23 +4,14 @@ use std::fmt::{ Formatter, Display, Error };
 
 pub struct DiffPrinter(pub Changeset);
 
-fn print_line_number(
-    current_line: Option<usize>, 
-    f: &mut Formatter, 
-    colorizer: Colorizer
-) -> Result<Option<usize>, Error>  {
+fn print_line_number(current_line: Option<usize>, f: &mut Formatter, colorizer: Colorizer) -> Result<Option<usize>, Error>  {
     let line_number = current_line.as_ref().map_or(" ".to_string(), |line| line.to_string());
     let line_number_string = format!("{:>3}| ", line_number);
     write!(f, "{}", colorizer.color(false, &line_number_string))?;
     Ok(current_line.map(|x| x + 1))
 }
 
-fn fmt_lines(
-    lines: &str,
-    mut current_line: Option<usize>,
-    f: &mut Formatter,
-    colorizer: Colorizer
-) -> Result<usize, Error> {
+fn fmt_lines(lines: &str, mut current_line: Option<usize>, f: &mut Formatter, colorizer: Colorizer) -> Result<usize, Error> {
     current_line = print_line_number(current_line, f, colorizer)?;
     let len = lines.len().saturating_sub(1);
 
@@ -40,21 +31,21 @@ fn fmt_lines(
 }
 
 #[derive(Copy, Clone)]
-pub struct Colorizer {
+struct Colorizer {
     color: Color,
     pass: bool,
 }
 
 impl Colorizer {
-    pub const fn colored(color: Color) -> Colorizer {
+    const fn colored(color: Color) -> Colorizer {
         Colorizer { color, pass: false }
     }
 
-    pub const fn normal() -> Colorizer {
+    const fn normal() -> Colorizer {
         Colorizer { color: Color::Black, pass: true }
     }
 
-    pub fn color(&self, background: bool, character: &str) -> ColoredString {
+    fn color(&self, background: bool, character: &str) -> ColoredString {
         if self.pass {
             return character.normal()
         } else if background {
@@ -66,7 +57,7 @@ impl Colorizer {
 }
 
 impl Display for DiffPrinter {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {        
+    fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         let mut line = 1;
 
         for i in 0 .. self.0.diffs.len() {
