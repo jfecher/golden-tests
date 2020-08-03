@@ -38,7 +38,7 @@ output and exit code.
 
 To get started plop this into your `Cargo.toml`:
 ```toml
-goldentests = "0.3.5"
+goldentests = "0.3.6"
 ```
 
 And create an integration test in `tests/goldentests.rs`. The specific name
