@@ -67,18 +67,24 @@ impl Display for DiffPrinter {
                 },
                 Difference::Add(lines) => {
                     // Don't show/increment the line number if the previous change was a Removal
-                    if i > 0 && matches!(self.0.diffs[i - 1], Difference::Rem(..)) {
-                        fmt_lines(lines, None, f, Colorizer::colored(Color::Green))?;
-                    } else {
-                        line = fmt_lines(lines, Some(line), f, Colorizer::colored(Color::Green))?;
+                    match self.0.diffs.get(i.wrapping_sub(1)) {
+                        Some(Difference::Rem(_)) => {
+                            fmt_lines(lines, None, f, Colorizer::colored(Color::Green))?;
+                        }
+                        _ => {
+                            line = fmt_lines(lines, Some(line), f, Colorizer::colored(Color::Green))?;
+                        }
                     }
                 },
                 Difference::Rem(lines) => {
                     // Don't show/increment the line number unless the next change is an Addition
-                    if i < self.0.diffs.len() - 1 && matches!(self.0.diffs[i + 1], Difference::Add(..)) {
-                        line = fmt_lines(lines, Some(line), f, Colorizer::colored(Color::Red))?;
-                    } else {
-                        fmt_lines(lines, None, f, Colorizer::colored(Color::Red))?;
+                    match self.0.diffs.get(i + 1) {
+                        Some(Difference::Add(_)) => {
+                            line = fmt_lines(lines, Some(line), f, Colorizer::colored(Color::Red))?;
+                        },
+                        _ => {
+                            fmt_lines(lines, None, f, Colorizer::colored(Color::Red))?;
+                        }
                     }
                 },
             }
