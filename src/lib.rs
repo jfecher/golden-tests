@@ -70,7 +70,7 @@ pub use error::TestError;
 use diff_printer::DiffPrinter;
 
 use colored::Colorize;
-use difference::Changeset;
+use similar::TextDiff;
 use shlex;
 
 use std::fs::File;
@@ -189,9 +189,8 @@ fn check_for_differences_in_stream(name: &str, path: &Path, stream: &[u8], expec
     let output = output_string.trim();
     let expected = expected.trim();
 
-    let differences = Changeset::new(expected, output, "\n");
-    let distance = differences.distance;
-    if distance != 0 {
+    let differences = TextDiff::from_lines(expected, output);
+    if differences.ratio() != 1.0 {
         println!("\n{}: Actual {} differs from expected {}:\n{}",
             path.to_string_lossy().bright_yellow(), name, name, DiffPrinter(differences));
         1
