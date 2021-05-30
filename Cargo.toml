@@ -15,6 +15,6 @@ documentation = "https://docs.rs/goldentests"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-colored = "1.9"
+colored = "2.0.0"
 difference = "2.0.0"
-shlex = "0.1.1"
+shlex = "1.0.0"
