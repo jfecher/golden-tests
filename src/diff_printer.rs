@@ -1,33 +1,25 @@
-use difference::{ Changeset, Difference };
+use similar::{ChangeTag, TextDiff, DiffOp, Change};
 use colored::{Color, Colorize, ColoredString};
 use std::fmt::{ Formatter, Display, Error };
 
-pub struct DiffPrinter(pub Changeset);
+pub struct DiffPrinter<'a>(pub TextDiff<'a, 'a, 'a, str>);
 
-fn print_line_number(current_line: Option<usize>, f: &mut Formatter, colorizer: Colorizer) -> Result<Option<usize>, Error>  {
-    let line_number = current_line.as_ref().map_or(" ".to_string(), |line| line.to_string());
+fn print_line_number(index: Option<usize>, f: &mut Formatter, colorizer: Colorizer) -> Result<(), Error>  {
+    let line_number = index.map_or_else(String::new, |line| (line + 1).to_string());
     let line_number_string = format!("{:>3}| ", line_number);
-    write!(f, "{}", colorizer.color(false, &line_number_string))?;
-    Ok(current_line.map(|x| x + 1))
+    
+    write!(f, "{}", colorizer.color(false, &line_number_string))
 }
 
-fn fmt_lines(lines: &str, mut current_line: Option<usize>, f: &mut Formatter, colorizer: Colorizer) -> Result<usize, Error> {
-    current_line = print_line_number(current_line, f, colorizer)?;
-    let len = lines.len().saturating_sub(1);
+fn fmt_line(f: &mut Formatter, index: Option<usize>, change: Change<str>) -> Result<(), Error> {
+    let colorizer = match change.tag() {
+        ChangeTag::Delete => Colorizer::colored(Color::Red),
+        ChangeTag::Equal => Colorizer::normal(),
+        ChangeTag::Insert => Colorizer::colored(Color::Green),
+    };
+    print_line_number(index, f, colorizer)?;
 
-    for (idx, character) in lines.chars().enumerate() {
-        if character == '\r' {
-            // Do nothing
-        } else if character == '\n' {
-            writeln!(f, "")?;
-            current_line = print_line_number(current_line, f, colorizer)?;
-        } else {
-            write!(f, "{}", colorizer.color(idx == len && character.is_whitespace(), &character.to_string()))?;
-        }
-    }
-
-    writeln!(f, "")?;
-    Ok(current_line.unwrap_or(0))
+    writeln!(f, "{}", colorizer.color(true, change.to_string().strip_suffix('\n').unwrap()))
 }
 
 #[derive(Copy, Clone)]
@@ -56,37 +48,25 @@ impl Colorizer {
     }
 }
 
-impl Display for DiffPrinter {
+impl Display for DiffPrinter<'_> {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        let mut line = 1;
+        for op in self.0.ops() {
+            match op {
+                DiffOp::Delete {..} | DiffOp::Equal {..} | DiffOp::Insert {..} => {
+                    for change in self.0.iter_changes(op) {
+                        fmt_line(f, change.new_index(), change)?;
+                    }
+                },
+                DiffOp::Replace { new_index: start, new_len: len, .. } => {
+                    let mut iter = self.0.iter_changes(op);
+                    for (line, change) in (*start..).zip(iter.by_ref().take(*len)) {
+                        fmt_line(f, Some(line), change)?;
+                    }
 
-        for i in 0 .. self.0.diffs.len() {
-            match &self.0.diffs[i] {
-                Difference::Same(lines) => {
-                    line = fmt_lines(lines, Some(line), f, Colorizer::normal())?;
-                },
-                Difference::Add(lines) => {
-                    // Don't show/increment the line number if the previous change was a Removal
-                    match self.0.diffs.get(i.wrapping_sub(1)) {
-                        Some(Difference::Rem(_)) => {
-                            fmt_lines(lines, None, f, Colorizer::colored(Color::Green))?;
-                        }
-                        _ => {
-                            line = fmt_lines(lines, Some(line), f, Colorizer::colored(Color::Green))?;
-                        }
+                    for change in iter {
+                        fmt_line(f, None, change)?;
                     }
-                },
-                Difference::Rem(lines) => {
-                    // Don't show/increment the line number unless the next change is an Addition
-                    match self.0.diffs.get(i + 1) {
-                        Some(Difference::Add(_)) => {
-                            line = fmt_lines(lines, Some(line), f, Colorizer::colored(Color::Red))?;
-                        },
-                        _ => {
-                            fmt_lines(lines, None, f, Colorizer::colored(Color::Red))?;
-                        }
-                    }
-                },
+                }
             }
         }
         Ok(())
