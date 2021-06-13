@@ -1,7 +1,7 @@
 
 ## Golden Tests
 
-[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fatrox%2Fsync-dotenv%2Fbadge&style=flat)](https://actions-badge.atrox.dev/atrox/sync-dotenv/goto)
+[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fjfecher%2Fgolden-tests%2Fbadge&style=flat)](https://actions-badge.atrox.dev/jfecher/golden-tests/goto)
 [![crates.io](https://img.shields.io/crates/v/goldentests)](https://crates.io/crates/goldentests)
 [![docs.rs](https://docs.rs/goldentests/badge.svg)](https://docs.rs/goldentests)
 
