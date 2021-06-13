@@ -32,7 +32,7 @@ output and exit code.
 
 ### Example `cargo test` Output
 
-![example image](example.png)
+![example image](example.jpg)
 
 ### Getting Started
 

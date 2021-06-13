@@ -19,7 +19,7 @@ fn fmt_line(f: &mut Formatter, index: Option<usize>, change: Change<str>) -> Res
     };
     print_line_number(index, f, colorizer)?;
 
-    writeln!(f, "{}", colorizer.color(true, change.to_string().strip_suffix('\n').unwrap()))
+    writeln!(f, "{}", colorizer.color(false, change.to_string().strip_suffix('\n').unwrap()))
 }
 
 #[derive(Copy, Clone)]
