@@ -17,12 +17,6 @@ pub struct TestConfig {
     /// to be read inside comments at the start of a line.
     pub test_line_prefix: String,
 
-    /// True if goldentests should be more verbose in its output. This is off by
-    /// default and currently enabling this will print a "testing <filename>..."
-    /// before each file while testing which can be useful if you have longer-running
-    /// tests and use --nocapture while running `cargo test`.
-    pub verbose: bool,
-
     /// The "args:" keyword used while parsing tests. Anything after
     /// `test_line_prefix + test_args_prefix` is read in as a space-delimited
     /// argument to the program.
@@ -125,7 +119,7 @@ impl TestConfig {
             "args:",
             "expected stdout:",
             "expected stderr:",
-            "expected exit status:"
+            "expected exit status:",
         )
     }
 
@@ -136,9 +130,15 @@ impl TestConfig {
     ///
     /// If you don't want to change any of the defaults, you can use `TestConfig::new` to construct
     /// a TestConfig with the default keywords (which are listed in its documentation).
-    pub fn with_custom_keywords<Binary, Tests>(binary_path: Binary, test_path: Tests, test_line_prefix: &str,
-                                test_args_prefix: &str, test_stdout_prefix: &str,
-                                test_stderr_prefix: &str, test_exit_status_prefix: &str) -> TestResult<TestConfig>
+    pub fn with_custom_keywords<Binary, Tests>(
+        binary_path: Binary,
+        test_path: Tests,
+        test_line_prefix: &str,
+        test_args_prefix: &str,
+        test_stdout_prefix: &str,
+        test_stderr_prefix: &str,
+        test_exit_status_prefix: &str,
+    ) -> TestResult<TestConfig>
     where
         Binary: Into<PathBuf>,
         Tests: Into<PathBuf>,
@@ -146,23 +146,31 @@ impl TestConfig {
         let (binary_path, test_path) = (binary_path.into(), test_path.into());
 
         if !test_path.exists() {
-            println!("{}", format!("the given test path '{}' does not exist", test_path.display()).red());
+            eprintln!(
+                "{}",
+                format!("the given test path '{}' does not exist", test_path.display()).red()
+            );
 
             Err(TestError::MissingTests(test_path))
         } else if !test_path.is_dir() {
-            println!("{}", format!("the given test path '{}' is not a directory", test_path.display()).red());
+            eprintln!(
+                "{}",
+                format!("the given test path '{}' is not a directory", test_path.display()).red()
+            );
 
             Err(TestError::ExpectedDirectory(test_path))
         } else {
+            let test_line_prefix = test_line_prefix.to_string();
+            let prefixed = |s| format!("{}{}", test_line_prefix, s);
+
             Ok(TestConfig {
                 binary_path,
                 test_path,
-                verbose: false,
-                test_line_prefix:        test_line_prefix.to_string(),
-                test_args_prefix:        test_line_prefix.to_string() + test_args_prefix,
-                test_stdout_prefix:      test_line_prefix.to_string() + test_stdout_prefix,
-                test_stderr_prefix:      test_line_prefix.to_string() + test_stderr_prefix,
-                test_exit_status_prefix: test_line_prefix.to_string() + test_exit_status_prefix,
+                test_args_prefix: prefixed(test_args_prefix),
+                test_stdout_prefix: prefixed(test_stdout_prefix),
+                test_stderr_prefix: prefixed(test_stderr_prefix),
+                test_exit_status_prefix: prefixed(test_exit_status_prefix),
+                test_line_prefix,
             })
         }
     }
