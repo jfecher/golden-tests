@@ -8,7 +8,6 @@ use clap::Parser;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
-// #[clap("Jake Fecher <jfecher11@gmail.com>", "1.1.0", "Automatically run and check expected output of test files", long_about = None)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
     #[clap(help = "The program to run for each test file")]
