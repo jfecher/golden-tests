@@ -32,7 +32,7 @@ output and exit code.
 
 ### Example Output
 
-![example image](example.jpg)
+![example image](example.png)
 
 ### Getting Started
 
