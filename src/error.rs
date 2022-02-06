@@ -4,6 +4,8 @@ use std::path::PathBuf;
 
 use colored::Colorize;
 
+pub type TestResult<T> = Result<T, TestError>;
+
 #[derive(Debug)]
 pub enum TestError {
     MissingTests(PathBuf),
@@ -32,6 +34,7 @@ impl Error for TestError {}
 pub(crate) enum InnerTestError {
     TestFailed { path: PathBuf, errors: Vec<String> },
     IoError(PathBuf, std::io::Error),
+    CommandError(PathBuf, std::process::Command, std::io::Error),
     ErrorParsingExitStatus(PathBuf, /*status*/ String, std::num::ParseIntError),
     ErrorParsingArgs(PathBuf, /*args*/ String),
 }
@@ -42,16 +45,25 @@ impl fmt::Display for InnerTestError {
 
         match self {
             InnerTestError::TestFailed { path, errors } => {
-                write!(f, "{}: {}", s(path), errors.join("\n"))
+                for (i, error) in errors.iter().enumerate() {
+                    write!(f, "{}: {}", s(path), error)?;
+                    if i + 1 != errors.len() {
+                        writeln!(f)?;
+                    }
+                }
+                Ok(())
             }
             InnerTestError::IoError(path, error) => {
-                write!(f, "{}: {}\n", s(path), error)
+                writeln!(f, "{}: {}", s(path), error)
+            }
+            InnerTestError::CommandError(path, command, error) => {
+                writeln!(f, "{}: Error running `{:?}`: {}", s(path), command, error)
             }
             InnerTestError::ErrorParsingExitStatus(path, status, error) => {
-                write!(f, "{}: Error parsing exit status '{}': {}\n", s(path), status, error)
+                writeln!(f, "{}: Error parsing exit status '{}': {}", s(path), status, error)
             }
             InnerTestError::ErrorParsingArgs(path, args) => {
-                write!(f, "{}: Error parsing test args: {}\n", s(path), args)
+                writeln!(f, "{}: Error parsing test args: {}", s(path), args)
             }
         }
     }

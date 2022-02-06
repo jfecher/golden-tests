@@ -1,6 +1,6 @@
 [package]
 name = "goldentests"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Jake Fecher <jfecher11@gmail.com>"]
 edition = "2018"
 license-file = "LICENSE"
@@ -12,14 +12,27 @@ repository = "https://github.com/jfecher/golden-tests"
 readme = "README.md"
 documentation = "https://docs.rs/goldentests"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "goldentests"
+
+[[bin]]
+name = "goldentests"
+required-features = ["binary"]
+doc = false
 
 [dependencies]
 colored = "2.0.0"
 shlex = "1.1.0"
 similar = "2.1.0"
 rayon = { version = "1.5.1", optional = true }
+indicatif = { version = "0.16.2", optional = true }
+
+# clap is only needed for the goldentest binary,
+# enabling it will have no effect on the library version
+clap = { version = "3.0.14", features = ["derive"], optional = true }
 
 [features]
 default = ["parallel"]
+binary = ["parallel", "progress-bar", "clap"]
 parallel = ["rayon"]
+progress-bar = ["indicatif"]

@@ -1,4 +1,4 @@
-use crate::{error::TestError, TestResult};
+use crate::error::{TestError, TestResult};
 use colored::Colorize;
 use std::path::PathBuf;
 
@@ -107,6 +107,7 @@ impl TestConfig {
     ///
     /// If you want to change these default keywords you can also create a TestConfig
     /// via `TestConfig::with_custom_keywords` which will allow you to specify each.
+    #[allow(unused)]
     pub fn new<Binary, Tests>(binary_path: Binary, test_path: Tests, test_line_prefix: &str) -> TestResult<TestConfig>
     where
         Binary: Into<PathBuf>,

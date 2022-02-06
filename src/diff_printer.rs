@@ -46,7 +46,7 @@ impl Colorizer {
 
     fn color(&self, background: bool, character: &str) -> ColoredString {
         if self.pass {
-            return character.normal();
+            character.normal()
         } else if background {
             character.on_color(self.color)
         } else {
