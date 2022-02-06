@@ -30,13 +30,53 @@ provide many config examples as tests and ensure that your
 parser was able to read the files with the expected stdout/stderr
 output and exit code.
 
-### Example `cargo test` Output
+### Example Output
 
 ![example image](example.jpg)
 
 ### Getting Started
 
-To get started plop this into your `Cargo.toml`:
+As of version 1.1, there are now two ways to use goldentests - either as a
+standalone binary or as a rust integration test. If you want to run it as
+a binary, continue on. If not, skip ahead to the next section. With that
+out of the way, we can install goldentests via:
+
+```sh
+$ cargo install goldentests --features binary
+```
+
+An example usage looks like this:
+
+```sh
+$ goldentests /bin/python path-to-tests '# '
+```
+
+This will tell goldentests to run `/bin/python` on each file in the `path-to-tests`
+directory. You'll likely want to alias this command with your preferred arguments
+for easier testing. An example test for us may look like this:
+
+```py
+print("Hello, World!")
+
+# args: -b
+# expected stdout:
+# Hello, World!
+```
+
+This file tells goldentests to run the command `/bin/python -b path-to-tests/example.py` and issue
+an error if the output of the command is not "Hello, World!".
+
+Note that there are test keywords `args:` and `expected stdout:` embedded in the comments.
+This is what the `'# '` parameter was when we invoked goldentests. You can change this parameter
+to change the prefix that goldentests looks for when parsing a file. For most languages,
+this should be a comment of some kind. E.g. if we we're testing haskell, we would use `-- `
+as the test-line prefix.
+
+#### As a rust integration test
+
+The second way to use goldentests is as a rust library for writing
+integration tests. Using this method will have `goldentests` run
+each time you call `cargo test`. To get started plop this into your `Cargo.toml`:
 ```toml
 goldentests = "1.1"
 ```
@@ -91,7 +131,6 @@ Here is the full set of keywords goldentests looks for in the file:
   defaults to `""`.
 - `expected exit status: [i32]`: If specified, goldentests will issue an error if the exit status differs
   to what is expected. Defaults to `None` (exit status is ignored by default).
-
 
 You can even configure the specific keywords used if you want. For any further information,
 check out goldentest's documentation [here](https://docs.rs/goldentests).
