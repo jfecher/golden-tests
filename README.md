@@ -7,7 +7,7 @@
 
 Golden tests is a golden file testing library configured so that tests
 can be created and edited from the test files alone without ever touching
-the rust source code of the test.
+the source code of your compiler, interpreter, or other tool.
 
 ### Why golden tests?
 
