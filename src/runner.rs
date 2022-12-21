@@ -156,7 +156,6 @@ fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, tes
 
     if !test.command_line_args.is_empty() {
         writeln!(file, "{}{}", config.test_args_prefix, test.command_line_args)?;
-        writeln!(file, "")?;
     }
 
     if Some(0) != output.status.code() {
@@ -293,7 +292,7 @@ impl TestConfig {
                         return Err(InnerTestError::TestUpdated { path, errors });
                     }
                 }
-                Ok(())
+                differences
             })
             .collect();
 
