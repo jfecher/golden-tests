@@ -178,7 +178,6 @@ fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, tes
             file.write_all(line)?;
             writeln!(file, "")?;
         }
-        writeln!(file, "")?;
     }
 
     // Doesn't handle \r correctly!
@@ -192,7 +191,6 @@ fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, tes
             file.write_all(line)?;
             writeln!(file, "")?;
         }
-        writeln!(file, "")?;
     }
     Ok(())
 }
