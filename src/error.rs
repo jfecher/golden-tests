@@ -56,7 +56,7 @@ impl fmt::Display for InnerTestError {
             }
             InnerTestError::TestUpdated { path, errors } => {
                 for (i, error) in errors.iter().enumerate() {
-                    write!(f, "{}: Updated {}", s(path), error)?;
+                    write!(f, "{} - UPDATED:  {}", s(path), error)?;
                     if i + 1 != errors.len() {
                         writeln!(f)?;
                     }
