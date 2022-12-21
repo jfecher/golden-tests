@@ -47,7 +47,6 @@ struct Args {
 
     #[clap(
         long,
-        default_value = false,
         help = "Accept what the current output, update the files to match this"
     )]
     overwrite: bool,
@@ -64,7 +63,7 @@ fn main() {
         &args.stdout_prefix,
         &args.stderr_prefix,
         &args.exit_status_prefix,
-        args.overwrite || env::var("GOLDENTEST_OVERWRITE").is_ok(),
+        args.overwrite || std::env::var("GOLDENTEST_OVERWRITE").is_ok(),
     ) {
         Ok(config) => config,
         Err(error) => {
