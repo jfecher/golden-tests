@@ -290,7 +290,7 @@ impl TestConfig {
                         overwrite_test(&file, self, &output, &test)
                             .map_err(|err| InnerTestError::IoError(file.to_owned(), err))?;
 
-                        Err(InnerTestError::TestUpdated { path, errors })?;
+                        return Err(InnerTestError::TestUpdated { path, errors });
                     }
                 }
                 Ok(())
@@ -336,7 +336,7 @@ impl TestConfig {
             format!("{} passing", total_tests - failing_tests).green(),
             format!("{} failing", failing_tests).red(),
             if updated_tests != 0 {
-                format!(" - {} updated", failing_tests)
+                format!(" - {} updated", updated_tests)
             } else {
                 String::new()
             }
