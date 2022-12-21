@@ -132,5 +132,14 @@ Here is the full set of keywords goldentests looks for in the file:
 - `expected exit status: [i32]`: If specified, goldentests will issue an error if the exit status differs
   to what is expected. Defaults to `None` (exit status is ignored by default).
 
+
+
 You can even configure the specific keywords used if you want. For any further information,
 check out goldentest's documentation [here](https://docs.rs/goldentests).
+
+### Update all tests with current output
+Set the `overwrite_tests` field in the config if you're running using cargo.
+The standalone executable checks for the flag `--overwrite` or the environment variable `GOLDENTEST_OVERWRITE`.
+
+`overwrite tests`: If you want to update all your tests to match the current output, the `overwrite_tests` flag is for you.
+  
