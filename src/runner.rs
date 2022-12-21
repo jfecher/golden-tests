@@ -14,7 +14,7 @@ use rayon::iter::ParallelIterator;
 use indicatif::ProgressBar;
 
 use std::fs::File;
-use std::io::Read;
+use std::io::{Write, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -26,6 +26,7 @@ struct Test {
     expected_stdout: String,
     expected_stderr: String,
     expected_exit_status: Option<i32>,
+    rest: String,
 }
 
 #[derive(PartialEq)]
@@ -80,6 +81,7 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
     let mut expected_stdout = String::new();
     let mut expected_stderr = String::new();
     let mut expected_exit_status = None;
+    let mut rest = String::new();
 
     let mut file = File::open(test_path).map_err(|err| InnerTestError::IoError(test_path.to_owned(), err))?;
     let mut contents = String::new();
@@ -121,9 +123,12 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
                 expected_exit_status = Some(status.parse().map_err(|err| {
                     InnerTestError::ErrorParsingExitStatus(test_path.to_owned(), status.to_owned(), err)
                 })?);
+            } else {
+                append_line(&mut rest, line);
             }
         } else {
             state = TestParseState::Neutral;
+            append_line(&mut rest, line);
         }
     }
 
@@ -139,7 +144,58 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
         expected_stdout,
         expected_stderr,
         expected_exit_status,
+        rest,
     })
+}
+
+fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, test: &Test) -> std::io::Result<()> {
+    // Maybe copy the file so we don't remove it if we fail here?
+    let mut file = File::create(test_path)?;
+
+    file.write_all(test.rest.as_bytes())?;
+
+    if !test.command_line_args.is_empty() {
+        writeln!(file, "{}{}", config.test_args_prefix, test.command_line_args)?;
+        writeln!(file, "")?;
+    }
+
+    if Some(0) != output.status.code() {
+        writeln!(
+            file,
+            "{} {}",
+            config.test_exit_status_prefix,
+            output.status.code().unwrap_or(0)
+        )?;
+    }
+
+    // Doesn't handle \r correctly!
+    if output.stdout.len() != 0 {
+        writeln!(file, "{}", config.test_stdout_prefix)?;
+        for line in output.stdout.split(|c| *c == 0x0A) {
+            if line.is_empty() {
+                continue;
+            }
+            file.write_all(config.test_line_prefix.as_bytes())?;
+            file.write_all(line)?;
+            writeln!(file, "")?;
+        }
+        writeln!(file, "")?;
+    }
+
+    // Doesn't handle \r correctly!
+    if output.stderr.len() != 0 {
+        writeln!(file, "{}", config.test_stderr_prefix)?;
+        for line in output.stderr.split(|c| *c == 0x0A) {
+            if line.is_empty() {
+                continue;
+            }
+            file.write_all(config.test_line_prefix.as_bytes())?;
+            file.write_all(line)?;
+            writeln!(file, "")?;
+        }
+        writeln!(file, "")?;
+    }
+    Ok(())
 }
 
 /// Diff the given "stream" and expected contents of the stream.
@@ -225,9 +281,18 @@ impl TestConfig {
 
                 let mut command = Command::new(&self.binary_path);
                 command.args(args);
-                let output = command.output().map_err(|err| InnerTestError::CommandError(file, command, err))?;
+                let output =
+                    command.output().map_err(|err| InnerTestError::CommandError(file.clone(), command, err))?;
 
-                check_for_differences(&test.path, &output, &test)?;
+                let differences = check_for_differences(&test.path, &output, &test);
+                if self.overwrite_tests {
+                    if let Err(InnerTestError::TestFailed { path, errors }) = differences {
+                        overwrite_test(&file, self, &output, &test)
+                            .map_err(|err| InnerTestError::IoError(file.to_owned(), err))?;
+
+                        Err(InnerTestError::TestUpdated { path, errors })?;
+                    }
+                }
                 Ok(())
             })
             .collect();
@@ -249,19 +314,33 @@ impl TestConfig {
 
         let total_tests = outputs.len();
         let mut failing_tests = 0;
+        let mut updated_tests = 0;
         for result in &outputs {
-            if let Err(error) = result {
-                eprintln!("{}", error);
-                failing_tests += 1;
+            match result {
+                Ok(_) => {}
+                Err(error @ InnerTestError::TestUpdated { .. }) => {
+                    eprintln!("{}", error);
+                    updated_tests += 1;
+                }
+                Err(error) => {
+                    eprintln!("{}", error);
+                    failing_tests += 1;
+                }
             }
         }
 
         println!(
-            "ran {} {} tests with {} and {}\n",
+            "ran {} {} tests with {} and {}{}\n",
             total_tests,
             "golden".bright_yellow(),
             format!("{} passing", total_tests - failing_tests).green(),
             format!("{} failing", failing_tests).red(),
+            if updated_tests != 0 {
+                format!(" - {} updated", failing_tests)
+            } else {
+                String::new()
+            }
+            .cyan(),
         );
 
         if failing_tests != 0 {

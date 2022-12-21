@@ -44,6 +44,13 @@ struct Args {
         help = "The program to run for each test file"
     )]
     exit_status_prefix: String,
+
+    #[clap(
+        long,
+        default_value = false,
+        help = "Accept what the current output, update the files to match this"
+    )]
+    overwrite: bool,
 }
 
 fn main() {
@@ -57,6 +64,7 @@ fn main() {
         &args.stdout_prefix,
         &args.stderr_prefix,
         &args.exit_status_prefix,
+        args.overwrite || env::var("GOLDENTEST_OVERWRITE").is_ok(),
     ) {
         Ok(config) => config,
         Err(error) => {
