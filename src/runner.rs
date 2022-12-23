@@ -305,34 +305,56 @@ impl TestConfig {
 
         let total_tests = outputs.len();
         let mut failing_tests = 0;
+        let mut can_be_fixed_with_overwrite_tests = 0;
         let mut updated_tests = 0;
         for result in &outputs {
             match result {
                 Ok(_) => {}
-                Err(error @ InnerTestError::TestUpdated { .. }) => {
-                    eprintln!("{}", error);
-                    updated_tests += 1;
-                }
                 Err(error) => {
+                    match error {
+                        InnerTestError::TestUpdated { .. } => {
+                            updated_tests += 1;
+                        }
+
+                        InnerTestError::TestFailed { .. } => {
+                            can_be_fixed_with_overwrite_tests += 1;
+                            failing_tests += 1;
+                        }
+
+                        InnerTestError::IoError(_, _)
+                        | InnerTestError::CommandError(_, _, _)
+                        | InnerTestError::ErrorParsingExitStatus(_, _, _)
+                        | InnerTestError::ErrorParsingArgs(_, _) => {
+                            failing_tests += 1;
+                        }
+                    }
                     eprintln!("{}", error);
-                    failing_tests += 1;
                 }
             }
         }
 
-        println!(
-            "ran {} {} tests with {} and {}{}\n",
-            total_tests,
-            "golden".bright_yellow(),
-            format!("{} passing", total_tests - failing_tests).green(),
-            format!("{} failing", failing_tests).red(),
-            if updated_tests != 0 {
-                format!(" - {} updated", updated_tests)
-            } else {
-                String::new()
-            }
-            .cyan(),
-        );
+        if self.overwrite_tests {
+            println!(
+                "ran {} {} tests with {} and {}\n",
+                total_tests,
+                "golden".bright_yellow(),
+                format!("{} passing", total_tests - failing_tests).green(),
+                format!("{} failing", failing_tests).red(),
+            );
+        } else {
+            println!(
+                "ran {} {} tests with {}, {} and {}\n",
+                total_tests,
+                "golden".bright_yellow(),
+                format!("{} passing", total_tests - failing_tests).green(),
+                format!("{} failing", failing_tests).red(),
+                format!("{} updated", updated_tests).cyan(),
+            );
+        }
+
+        if can_be_fixed_with_overwrite_tests > 0 {
+            println!("Looks like you have failing tests. Review the output of each and fix any unexpected differences. When finished, you can use the --overwrite flag to automatically write the new output to the {} failing test file(s)", can_be_fixed_with_overwrite_tests);
+        }
 
         if failing_tests != 0 {
             Err(TestError::TestErrors)
