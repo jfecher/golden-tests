@@ -180,7 +180,7 @@ fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, tes
     // Doesn't handle \r correctly!
     if output.stderr.len() != 0 {
         writeln!(file, "{}", config.test_stderr_prefix)?;
-        for line in output.stdout.split(|c| *c == '\n' as u8) {
+        for line in output.stderr.split(|c| *c == '\n' as u8) {
             file.write_all(config.test_line_prefix.as_bytes())?;
             file.write_all(line)?;
             writeln!(file, "")?;
