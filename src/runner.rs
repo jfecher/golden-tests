@@ -333,7 +333,7 @@ impl TestConfig {
             }
         }
 
-        if self.overwrite_tests {
+        if !self.overwrite_tests {
             println!(
                 "ran {} {} tests with {} and {}\n",
                 total_tests,
