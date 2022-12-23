@@ -47,7 +47,7 @@ struct Args {
 
     #[clap(
         long,
-        help = "Accept what the current output, update the files to match this"
+        help = "Update the expected output of each test file to match the actual output"
     )]
     overwrite: bool,
 }
