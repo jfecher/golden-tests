@@ -63,7 +63,7 @@ fn main() {
         &args.stdout_prefix,
         &args.stderr_prefix,
         &args.exit_status_prefix,
-        args.overwrite || std::env::var("GOLDENTEST_OVERWRITE").is_ok(),
+        args.overwrite,
     ) {
         Ok(config) => config,
         Err(error) => {
