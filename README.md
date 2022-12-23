@@ -137,8 +137,10 @@ Here is the full set of keywords goldentests looks for in the file:
 You can even configure the specific keywords used if you want. For any further information,
 check out goldentest's documentation [here](https://docs.rs/goldentests).
 
-### Update all tests with current output
-Enabling `overwrite_tests` will overwrite all failing tests with the output given when running them.
-One use is automatically porting old tests. If you have your golden-tests checked into version control you can easily review the changes afterwards.
-
-To enable pass the `--overwrite` flag or set the `overwrite_tests` field to `true`. 
+### Automatically updating tests
+Optionally, tests can be automatically updated by passing the `--overwrite`
+flag when running goldentests as a standalone program, or by setting the
+`overwrite_tests` flag when running as a rust library. Doing this will update
+the expected output in each file so that it matches the actual output. Since
+this is all automatic, make sure to manually review any changes before using
+this flag.
