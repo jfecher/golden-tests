@@ -127,8 +127,12 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
                 append_line(&mut rest, line);
             }
         } else {
+            // Both expected_stdout and expected_stderr need a blank line at the end,
+            // strip that out.
+            if state == TestParseState::Neutral {
+                append_line(&mut rest, line);
+            }
             state = TestParseState::Neutral;
-            append_line(&mut rest, line);
         }
     }
 
@@ -152,10 +156,13 @@ fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, tes
     // Maybe copy the file so we don't remove it if we fail here?
     let mut file = File::create(test_path)?;
 
-    file.write_all(test.rest.as_bytes())?;
+    file.write_all(test.rest.trim_end().as_bytes())?;
+    writeln!(file, "")?;
+    writeln!(file, "")?;
 
     if !test.command_line_args.is_empty() {
         writeln!(file, "{}{}", config.test_args_prefix, test.command_line_args)?;
+        writeln!(file, "")?;
     }
 
     if Some(0) != output.status.code() {
@@ -165,26 +172,37 @@ fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, tes
             config.test_exit_status_prefix,
             output.status.code().unwrap_or(0)
         )?;
+        writeln!(file, "")?;
     }
 
     // Doesn't handle \r correctly!
     if output.stdout.len() != 0 {
         writeln!(file, "{}", config.test_stdout_prefix)?;
         for line in output.stdout.split(|c| *c == '\n' as u8) {
+            if line.is_empty() {
+                // Remove leading and trailing newlines
+                continue;
+            }
             file.write_all(config.test_line_prefix.as_bytes())?;
             file.write_all(line)?;
             writeln!(file, "")?;
         }
+        writeln!(file, "")?;
     }
 
     // Doesn't handle \r correctly!
     if output.stderr.len() != 0 {
         writeln!(file, "{}", config.test_stderr_prefix)?;
         for line in output.stderr.split(|c| *c == '\n' as u8) {
+            if line.is_empty() {
+                // Remove leading and trailing newlines
+                continue;
+            }
             file.write_all(config.test_line_prefix.as_bytes())?;
             file.write_all(line)?;
             writeln!(file, "")?;
         }
+        writeln!(file, "")?;
     }
     Ok(())
 }
