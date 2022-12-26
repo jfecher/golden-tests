@@ -152,6 +152,34 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
     })
 }
 
+fn write_expected_output_for_stream(file: &mut File, prefix: &str, marker: &str, expected: &[u8]) -> std::io::Result<()> {
+    // Doesn't handle \r correctly!
+    // Strip leading and trailing newlines from the output
+    let expected_stdout = String::from_utf8_lossy(expected).replace("\r", "");
+    let lines: Vec<&str> = expected_stdout.trim().split('\n').collect();
+    match lines.len() {
+        // Don't write if there's nothing to write
+        0 => Ok(()),
+        // If the line is short and nice, write that line
+        1 if lines[0].len() < 80 => {
+            write!(file, "{}", marker)?;
+            file.write_all(expected)?;
+            writeln!(file, "")
+        }
+        // Otherwise we write it more longform
+        _ => {
+            writeln!(file, "{}", marker)?;
+            for line in lines {
+                file.write_all(prefix.as_bytes())?;
+                file.write_all(line.as_bytes())?;
+                writeln!(file, "")?;
+            }
+            writeln!(file, "")
+        }
+    }
+}
+
+
 fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, test: &Test) -> std::io::Result<()> {
     // Maybe copy the file so we don't remove it if we fail here?
     let mut file = File::create(test_path)?;
@@ -161,8 +189,7 @@ fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, tes
     writeln!(file, "")?;
 
     if !test.command_line_args.is_empty() {
-        writeln!(file, "{}{}", config.test_args_prefix, test.command_line_args)?;
-        writeln!(file, "")?;
+        writeln!(file, "{} {}", config.test_args_prefix, test.command_line_args)?;
     }
 
     if Some(0) != output.status.code() {
@@ -172,39 +199,20 @@ fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, tes
             config.test_exit_status_prefix,
             output.status.code().unwrap_or(0)
         )?;
-        writeln!(file, "")?;
     }
 
-    // Doesn't handle \r correctly!
-    if output.stdout.len() != 0 {
-        writeln!(file, "{}", config.test_stdout_prefix)?;
-        for line in output.stdout.split(|c| *c == '\n' as u8) {
-            if line.is_empty() {
-                // Remove leading and trailing newlines
-                continue;
-            }
-            file.write_all(config.test_line_prefix.as_bytes())?;
-            file.write_all(line)?;
-            writeln!(file, "")?;
-        }
-        writeln!(file, "")?;
-    }
-
-    // Doesn't handle \r correctly!
-    if output.stderr.len() != 0 {
-        writeln!(file, "{}", config.test_stderr_prefix)?;
-        for line in output.stderr.split(|c| *c == '\n' as u8) {
-            if line.is_empty() {
-                // Remove leading and trailing newlines
-                continue;
-            }
-            file.write_all(config.test_line_prefix.as_bytes())?;
-            file.write_all(line)?;
-            writeln!(file, "")?;
-        }
-        writeln!(file, "")?;
-    }
-    Ok(())
+    write_expected_output_for_stream(
+        &mut file,
+        &config.test_line_prefix,
+        &config.test_stdout_prefix,
+        &output.stdout,
+    )?;
+    write_expected_output_for_stream(
+        &mut file,
+        &config.test_line_prefix,
+        &config.test_stderr_prefix,
+        &output.stderr,
+    )
 }
 
 /// Diff the given "stream" and expected contents of the stream.
