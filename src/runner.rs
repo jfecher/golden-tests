@@ -160,6 +160,7 @@ fn write_expected_output_for_stream(file: &mut File, prefix: &str, marker: &str,
     match lines.len() {
         // Don't write if there's nothing to write
         0 => Ok(()),
+        1 if lines[0].len() == 0 => Ok(()),
         // If the line is short and nice, write that line
         1 if lines[0].len() < 80 => {
             write!(file, "{} ", marker)?;
