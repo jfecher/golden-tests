@@ -44,6 +44,12 @@ struct Args {
         help = "The program to run for each test file"
     )]
     exit_status_prefix: String,
+
+    #[clap(
+        long,
+        help = "Update the expected output of each test file to match the actual output"
+    )]
+    overwrite: bool,
 }
 
 fn main() {
@@ -57,6 +63,7 @@ fn main() {
         &args.stdout_prefix,
         &args.stderr_prefix,
         &args.exit_status_prefix,
+        args.overwrite,
     ) {
         Ok(config) => config,
         Err(error) => {

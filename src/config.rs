@@ -60,6 +60,10 @@ pub struct TestConfig {
     /// // expected exit status: 0
     /// ```
     pub test_exit_status_prefix: String,
+
+    /// Flag the current output as correct and regenerate the test files. This assumes the order of
+    /// the `goldenfiles` sections can be moved around.
+    pub overwrite_tests: bool,
 }
 
 impl TestConfig {
@@ -121,6 +125,7 @@ impl TestConfig {
             "expected stdout:",
             "expected stderr:",
             "expected exit status:",
+            false,
         )
     }
 
@@ -139,6 +144,7 @@ impl TestConfig {
         test_stdout_prefix: &str,
         test_stderr_prefix: &str,
         test_exit_status_prefix: &str,
+        overwrite_tests: bool,
     ) -> TestResult<TestConfig>
     where
         Binary: Into<PathBuf>,
@@ -172,6 +178,7 @@ impl TestConfig {
                 test_stderr_prefix: prefixed(test_stderr_prefix),
                 test_exit_status_prefix: prefixed(test_exit_status_prefix),
                 test_line_prefix,
+                overwrite_tests,
             })
         }
     }

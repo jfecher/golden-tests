@@ -9,3 +9,4 @@ sys.exit(3)
 # expected stdout: test
 
 # expected stderr: error!
+

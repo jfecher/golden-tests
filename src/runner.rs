@@ -14,7 +14,7 @@ use rayon::iter::ParallelIterator;
 use indicatif::ProgressBar;
 
 use std::fs::File;
-use std::io::Read;
+use std::io::{Write, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -26,6 +26,7 @@ struct Test {
     expected_stdout: String,
     expected_stderr: String,
     expected_exit_status: Option<i32>,
+    rest: String,
 }
 
 #[derive(PartialEq)]
@@ -80,6 +81,7 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
     let mut expected_stdout = String::new();
     let mut expected_stderr = String::new();
     let mut expected_exit_status = None;
+    let mut rest = String::new();
 
     let mut file = File::open(test_path).map_err(|err| InnerTestError::IoError(test_path.to_owned(), err))?;
     let mut contents = String::new();
@@ -121,8 +123,15 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
                 expected_exit_status = Some(status.parse().map_err(|err| {
                     InnerTestError::ErrorParsingExitStatus(test_path.to_owned(), status.to_owned(), err)
                 })?);
+            } else {
+                append_line(&mut rest, line);
             }
         } else {
+            // Both expected_stdout and expected_stderr need a blank line at the end,
+            // the order here implicitly skips that newline.
+            if state == TestParseState::Neutral {
+                append_line(&mut rest, line);
+            }
             state = TestParseState::Neutral;
         }
     }
@@ -139,7 +148,71 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
         expected_stdout,
         expected_stderr,
         expected_exit_status,
+        rest,
     })
+}
+
+fn write_expected_output_for_stream(file: &mut File, prefix: &str, marker: &str, expected: &[u8]) -> std::io::Result<()> {
+    // Doesn't handle \r correctly!
+    // Strip leading and trailing newlines from the output
+    let expected_stdout = String::from_utf8_lossy(expected).replace("\r", "");
+    let lines: Vec<&str> = expected_stdout.trim().split('\n').collect();
+    match lines.len() {
+        // Don't write if there's nothing to write
+        0 => Ok(()),
+        1 if lines[0].len() == 0 => Ok(()),
+        // If the line is short and nice, write that line
+        1 if lines[0].len() < 80 => {
+            write!(file, "{} ", marker)?;
+            file.write_all(expected)?;
+            writeln!(file, "")
+        }
+        // Otherwise we write it more longform
+        _ => {
+            writeln!(file, "{}", marker)?;
+            for line in lines {
+                file.write_all(prefix.as_bytes())?;
+                file.write_all(line.as_bytes())?;
+                writeln!(file, "")?;
+            }
+            writeln!(file, "")
+        }
+    }
+}
+
+fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, test: &Test) -> std::io::Result<()> {
+    // Maybe copy the file so we don't remove it if we fail here?
+    let mut file = File::create(test_path)?;
+
+    file.write_all(test.rest.trim_end().as_bytes())?;
+    writeln!(file, "")?;
+    writeln!(file, "")?;
+
+    if !test.command_line_args.is_empty() {
+        writeln!(file, "{} {}", config.test_args_prefix, test.command_line_args.trim())?;
+    }
+
+    if Some(0) != output.status.code() {
+        writeln!(
+            file,
+            "{} {}",
+            config.test_exit_status_prefix,
+            output.status.code().unwrap_or(0)
+        )?;
+    }
+
+    write_expected_output_for_stream(
+        &mut file,
+        &config.test_line_prefix,
+        &config.test_stdout_prefix,
+        &output.stdout,
+    )?;
+    write_expected_output_for_stream(
+        &mut file,
+        &config.test_line_prefix,
+        &config.test_stderr_prefix,
+        &output.stderr,
+    )
 }
 
 /// Diff the given "stream" and expected contents of the stream.
@@ -225,10 +298,19 @@ impl TestConfig {
 
                 let mut command = Command::new(&self.binary_path);
                 command.args(args);
-                let output = command.output().map_err(|err| InnerTestError::CommandError(file, command, err))?;
+                let output =
+                    command.output().map_err(|err| InnerTestError::CommandError(file.clone(), command, err))?;
 
-                check_for_differences(&test.path, &output, &test)?;
-                Ok(())
+                let differences = check_for_differences(&test.path, &output, &test);
+                if self.overwrite_tests {
+                    if let Err(InnerTestError::TestFailed { path, errors }) = differences {
+                        overwrite_test(&file, self, &output, &test)
+                            .map_err(|err| InnerTestError::IoError(file.to_owned(), err))?;
+
+                        return Err(InnerTestError::TestUpdated { path, errors });
+                    }
+                }
+                differences
             })
             .collect();
 
@@ -249,20 +331,57 @@ impl TestConfig {
 
         let total_tests = outputs.len();
         let mut failing_tests = 0;
+        let mut can_be_fixed_with_overwrite_tests = 0;
+        let mut updated_tests = 0;
         for result in &outputs {
-            if let Err(error) = result {
-                eprintln!("{}", error);
-                failing_tests += 1;
+            match result {
+                Ok(_) => {}
+                Err(InnerTestError::TestUpdated { .. }) => {
+                    updated_tests += 1;
+                }
+
+                Err(InnerTestError::TestFailed { .. }) => {
+                    can_be_fixed_with_overwrite_tests += 1;
+                    failing_tests += 1;
+                }
+
+                Err(
+                    InnerTestError::IoError(_, _)
+                    | InnerTestError::CommandError(_, _, _)
+                    | InnerTestError::ErrorParsingExitStatus(_, _, _)
+                    | InnerTestError::ErrorParsingArgs(_, _),
+                ) => {
+                    failing_tests += 1;
+                }
+            }
+
+            if let Err(err) = result {
+                eprintln!("{}", err)
             }
         }
 
-        println!(
-            "ran {} {} tests with {} and {}\n",
-            total_tests,
-            "golden".bright_yellow(),
-            format!("{} passing", total_tests - failing_tests).green(),
-            format!("{} failing", failing_tests).red(),
-        );
+        if !self.overwrite_tests {
+            println!(
+                "ran {} {} tests with {} and {}\n",
+                total_tests,
+                "golden".bright_yellow(),
+                format!("{} passing", total_tests - failing_tests).green(),
+                format!("{} failing", failing_tests).red(),
+            );
+        } else {
+            println!(
+                "ran {} {} tests with {}, {} and {}\n",
+                total_tests,
+                "golden".bright_yellow(),
+                format!("{} passing", total_tests - failing_tests).green(),
+                format!("{} failing", failing_tests).red(),
+                format!("{} updated", updated_tests).cyan(),
+            );
+        }
+
+        if can_be_fixed_with_overwrite_tests > 0 {
+            println!("Looks like you have failing tests. Review the output of each and fix any unexpected differences. When finished, you can use the --overwrite flag to automatically write the new output to the {} failing test file(s)", can_be_fixed_with_overwrite_tests);
+        }
 
         if failing_tests != 0 {
             Err(TestError::TestErrors)
