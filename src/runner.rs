@@ -128,7 +128,7 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
             }
         } else {
             // Both expected_stdout and expected_stderr need a blank line at the end,
-            // strip that out.
+            // the order here implicitly skips that newline.
             if state == TestParseState::Neutral {
                 append_line(&mut rest, line);
             }
