@@ -180,7 +180,6 @@ fn write_expected_output_for_stream(file: &mut File, prefix: &str, marker: &str,
     }
 }
 
-
 fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, test: &Test) -> std::io::Result<()> {
     // Maybe copy the file so we don't remove it if we fail here?
     let mut file = File::create(test_path)?;
