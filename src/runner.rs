@@ -336,26 +336,27 @@ impl TestConfig {
         for result in &outputs {
             match result {
                 Ok(_) => {}
-                Err(error) => {
-                    match error {
-                        InnerTestError::TestUpdated { .. } => {
-                            updated_tests += 1;
-                        }
-
-                        InnerTestError::TestFailed { .. } => {
-                            can_be_fixed_with_overwrite_tests += 1;
-                            failing_tests += 1;
-                        }
-
-                        InnerTestError::IoError(_, _)
-                        | InnerTestError::CommandError(_, _, _)
-                        | InnerTestError::ErrorParsingExitStatus(_, _, _)
-                        | InnerTestError::ErrorParsingArgs(_, _) => {
-                            failing_tests += 1;
-                        }
-                    }
-                    eprintln!("{}", error);
+                Err(InnerTestError::TestUpdated { .. }) => {
+                    updated_tests += 1;
                 }
+
+                Err(InnerTestError::TestFailed { .. }) => {
+                    can_be_fixed_with_overwrite_tests += 1;
+                    failing_tests += 1;
+                }
+
+                Err(
+                    InnerTestError::IoError(_, _)
+                    | InnerTestError::CommandError(_, _, _)
+                    | InnerTestError::ErrorParsingExitStatus(_, _, _)
+                    | InnerTestError::ErrorParsingArgs(_, _),
+                ) => {
+                    failing_tests += 1;
+                }
+            }
+
+            if let Err(err) = result {
+                eprintln!("{}", err)
             }
         }
 
