@@ -13,8 +13,8 @@ struct Args {
     #[clap(help = "The program to run for each test file")]
     binary_path: PathBuf,
 
-    #[clap(help = "The directory to search for test files recursively within")]
-    test_directory: PathBuf,
+    #[clap(help = "The directory to search for test files recursively within, or a single file to test")]
+    test_path: PathBuf,
 
     #[clap(
         help = "Prefix string for test commands. This is usually the same as the comment syntax in the language you are testing. For example, in C this would be '// '"
@@ -55,22 +55,16 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let config = match TestConfig::with_custom_keywords(
+    let config = TestConfig::with_custom_keywords(
         args.binary_path,
-        args.test_directory,
+        args.test_path,
         &args.test_prefix,
         &args.args_prefix,
         &args.stdout_prefix,
         &args.stderr_prefix,
         &args.exit_status_prefix,
         args.overwrite,
-    ) {
-        Ok(config) => config,
-        Err(error) => {
-            eprintln!("error: {}", error);
-            return;
-        }
-    };
+    );
 
     config.run_tests().unwrap_or_else(|_| std::process::exit(1));
 }

@@ -1,13 +1,12 @@
-use crate::error::{TestError, TestResult};
-use colored::Colorize;
 use std::path::PathBuf;
 
 pub struct TestConfig {
     /// The binary path to your program, typically "target/debug/myprogram"
     pub binary_path: PathBuf,
 
-    /// The path to the subdirectory containing your tests. This subdirectory will be
-    /// searched recursively for all files.
+    /// The path to the directory containing your tests, or a single test file.
+    ///
+    /// If this is a directory, it will be searched recursively for all files.
     pub test_path: PathBuf,
 
     /// The sequence of characters starting at the beginning of a line that
@@ -112,7 +111,7 @@ impl TestConfig {
     /// If you want to change these default keywords you can also create a TestConfig
     /// via `TestConfig::with_custom_keywords` which will allow you to specify each.
     #[allow(unused)]
-    pub fn new<Binary, Tests>(binary_path: Binary, test_path: Tests, test_line_prefix: &str) -> TestResult<TestConfig>
+    pub fn new<Binary, Tests>(binary_path: Binary, test_path: Tests, test_line_prefix: &str) -> TestConfig
     where
         Binary: Into<PathBuf>,
         Tests: Into<PathBuf>,
@@ -145,41 +144,26 @@ impl TestConfig {
         test_stderr_prefix: &str,
         test_exit_status_prefix: &str,
         overwrite_tests: bool,
-    ) -> TestResult<TestConfig>
+    ) -> TestConfig
     where
         Binary: Into<PathBuf>,
         Tests: Into<PathBuf>,
     {
-        let (binary_path, test_path) = (binary_path.into(), test_path.into());
+        let binary_path = binary_path.into();
+        let test_path = test_path.into();
 
-        if !test_path.exists() {
-            eprintln!(
-                "{}",
-                format!("the given test path '{}' does not exist", test_path.display()).red()
-            );
+        let test_line_prefix = test_line_prefix.to_string();
+        let prefixed = |s| format!("{}{}", test_line_prefix, s);
 
-            Err(TestError::MissingTests(test_path))
-        } else if !test_path.is_dir() {
-            eprintln!(
-                "{}",
-                format!("the given test path '{}' is not a directory", test_path.display()).red()
-            );
-
-            Err(TestError::ExpectedDirectory(test_path))
-        } else {
-            let test_line_prefix = test_line_prefix.to_string();
-            let prefixed = |s| format!("{}{}", test_line_prefix, s);
-
-            Ok(TestConfig {
-                binary_path,
-                test_path,
-                test_args_prefix: prefixed(test_args_prefix),
-                test_stdout_prefix: prefixed(test_stdout_prefix),
-                test_stderr_prefix: prefixed(test_stderr_prefix),
-                test_exit_status_prefix: prefixed(test_exit_status_prefix),
-                test_line_prefix,
-                overwrite_tests,
-            })
+        TestConfig {
+            binary_path,
+            test_path,
+            test_args_prefix: prefixed(test_args_prefix),
+            test_stdout_prefix: prefixed(test_stdout_prefix),
+            test_stderr_prefix: prefixed(test_stderr_prefix),
+            test_exit_status_prefix: prefixed(test_exit_status_prefix),
+            test_line_prefix,
+            overwrite_tests,
         }
     }
 }
