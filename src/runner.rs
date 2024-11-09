@@ -1,6 +1,6 @@
 use crate::config::TestConfig;
 use crate::diff_printer::DiffPrinter;
-use crate::error::{InnerTestError, TestError, TestResult};
+use crate::error::{InnerTestError, TestResult};
 
 use colored::Colorize;
 use similar::TextDiff;
@@ -14,7 +14,7 @@ use rayon::iter::ParallelIterator;
 use indicatif::ProgressBar;
 
 use std::fs::File;
-use std::io::{Write, Read};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -36,32 +36,35 @@ enum TestParseState {
     ReadingExpectedStderr,
 }
 
-/// Expects that the given directory is an existing path
-fn find_tests(directory: &Path) -> (Vec<PathBuf>, Vec<InnerTestError>) {
+fn find_tests(test_path: &Path) -> (Vec<PathBuf>, Vec<InnerTestError>) {
     let mut tests = vec![];
     let mut errors = vec![];
 
-    let read_dir = match std::fs::read_dir(directory) {
-        Ok(dir) => dir,
-        Err(err) => return (tests, vec![InnerTestError::IoError(directory.to_owned(), err)]),
-    };
-
-    for entry in read_dir {
-        let path = match entry {
-            Ok(entry) => entry.path(),
-            Err(err) => {
-                errors.push(InnerTestError::IoError(directory.to_owned(), err));
-                continue;
-            }
+    if test_path.is_dir() {
+        let read_dir = match std::fs::read_dir(test_path) {
+            Ok(dir) => dir,
+            Err(err) => return (tests, vec![InnerTestError::IoError(test_path.to_owned(), err)]),
         };
 
-        if path.is_dir() {
-            let (mut more_tests, mut more_errors) = find_tests(&path);
-            tests.append(&mut more_tests);
-            errors.append(&mut more_errors);
-        } else {
-            tests.push(path);
+        for entry in read_dir {
+            let path = match entry {
+                Ok(entry) => entry.path(),
+                Err(err) => {
+                    errors.push(InnerTestError::IoError(test_path.to_owned(), err));
+                    continue;
+                }
+            };
+
+            if path.is_dir() {
+                let (mut more_tests, mut more_errors) = find_tests(&path);
+                tests.append(&mut more_tests);
+                errors.append(&mut more_errors);
+            } else {
+                tests.push(path);
+            }
         }
+    } else {
+        tests.push(test_path.into());
     }
 
     (tests, errors)
@@ -152,7 +155,12 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
     })
 }
 
-fn write_expected_output_for_stream(file: &mut File, prefix: &str, marker: &str, expected: &[u8]) -> std::io::Result<()> {
+fn write_expected_output_for_stream(
+    file: &mut File,
+    prefix: &str,
+    marker: &str,
+    expected: &[u8],
+) -> std::io::Result<()> {
     // Doesn't handle \r correctly!
     // Strip leading and trailing newlines from the output
     let expected_stdout = String::from_utf8_lossy(expected).replace("\r", "");
@@ -384,7 +392,7 @@ impl TestConfig {
         }
 
         if failing_tests != 0 {
-            Err(TestError::TestErrors)
+            Err(())
         } else {
             Ok(())
         }
