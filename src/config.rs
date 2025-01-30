@@ -17,9 +17,14 @@ pub struct TestConfig {
     pub test_line_prefix: String,
 
     /// The "args:" keyword used while parsing tests. Anything after
-    /// `test_line_prefix + test_args_prefix` is read in as a space-delimited
-    /// argument to the program.
+    /// `test_line_prefix + test_args_prefix` is read in as shell arguments to
+    /// the program, passed before the test file path.
     pub test_args_prefix: String,
+
+    /// The "args after:" keyword used while parsing tests. Anything after
+    /// `test_line_prefix + test_args_after_prefix` is read in as shell
+    /// arguments to the program, passed after the test file path.
+    pub test_args_after_prefix: String,
 
     /// The "expected stdout:" keyword used while parsing tests. Any line starting
     /// with `test_line_prefix` after a line starting with `test_line_prefix + test_stdout_prefix`
@@ -121,6 +126,7 @@ impl TestConfig {
             test_path,
             test_line_prefix,
             "args:",
+            "args after:",
             "expected stdout:",
             "expected stderr:",
             "expected exit status:",
@@ -140,6 +146,7 @@ impl TestConfig {
         test_path: Tests,
         test_line_prefix: &str,
         test_args_prefix: &str,
+        test_args_after_prefix: &str,
         test_stdout_prefix: &str,
         test_stderr_prefix: &str,
         test_exit_status_prefix: &str,
@@ -159,6 +166,7 @@ impl TestConfig {
             binary_path,
             test_path,
             test_args_prefix: prefixed(test_args_prefix),
+            test_args_after_prefix: prefixed(test_args_after_prefix),
             test_stdout_prefix: prefixed(test_stdout_prefix),
             test_stderr_prefix: prefixed(test_stderr_prefix),
             test_exit_status_prefix: prefixed(test_exit_status_prefix),
