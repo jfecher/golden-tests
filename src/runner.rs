@@ -293,14 +293,8 @@ impl TestConfig {
                 #[cfg(feature = "progress-bar")]
                 progress.inc(1);
                 let test = parse_test(&file, self)?;
-                let mut args = vec![];
-
-                // Avoid pushing an empty '' arg at the beginning
-                let trimmed_args = test.command_line_args.trim();
-                if !trimmed_args.is_empty() {
-                    args = shlex::split(trimmed_args)
-                        .ok_or_else(|| InnerTestError::ErrorParsingArgs(file.clone(), trimmed_args.to_owned()))?;
-                }
+                let mut args = shlex::split(&test.command_line_args)
+                    .ok_or_else(|| InnerTestError::ErrorParsingArgs(file.clone(), test.command_line_args.to_owned()))?;
 
                 args.push(test.path.to_string_lossy().to_string());
 
