@@ -90,7 +90,7 @@ use goldentests::{ TestConfig, TestResult };
 
 #[test]
 fn run_golden_tests() -> TestResult<()> {
-    let config = TestConfig::new("target/debug/my-binary", "my-test-path", "// ")?;
+    let config = TestConfig::new("target/debug/my-binary", "my-test-path", "// ");
     config.run_tests()
 }
 ```
@@ -121,8 +121,10 @@ as the test-line prefix.
 
 Here is the full set of keywords goldentests looks for in the file:
 
-- `args: <single-line-string>`: Anything after this keyword will be used as the command-line arguments for the
-  program that was specified when creating the `TestConfig`.
+- `args: <single-line-string>`: Anything after this keyword will be used as command-line arguments for the
+  program that was specified when creating the `TestConfig`. These arguments will all be placed before the file argument.
+- `args after: <single-line-string>`: Anything after this keyword will be used as command-line arguments for the
+  program that was specified when creating the `TestConfig`. These arguments will all be placed after the file argument.
 - `expected stdout: <multi-line-string>`: This keyword will continue reading characters, appending
   them to the expected stdout output until it reaches a line that does not start with the test prefix
   ("// " in the example above). If the stdout when running the program differs from the string given here,
@@ -133,14 +135,22 @@ Here is the full set of keywords goldentests looks for in the file:
   to what is expected. Defaults to `None` (exit status is ignored by default).
 
 
-
 You can even configure the specific keywords used if you want. For any further information,
 check out goldentest's documentation [here](https://docs.rs/goldentests).
 
 ### Automatically updating tests
+
 Optionally, tests can be automatically updated by passing the `--overwrite`
 flag when running goldentests as a standalone program, or by setting the
 `overwrite_tests` flag when running as a rust library. Doing this will update
 the expected output in each file so that it matches the actual output. Since
 this is all automatic, make sure to manually review any changes before using
 this flag.
+
+### Features
+
+Given below is a list of each crate feature as well as whether it is enabled by default:
+
+- `binary` (disabled): Build `goldentests` as a standalone binary rather than a rust testing library
+- `progress-bar` (disabled): Display a progress bar while testing. Useful if running many tests but `cargo test` hides the output of tests until it finishes by default so this is by default only enabled if `binary` is enabled. If you want to use this with `cargo test`, you can still enable this and make sure to pass the `no-capture` flag to `cargo test` when running.
+- `parallel` (enabled): Run tests in parallel.
