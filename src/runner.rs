@@ -23,6 +23,7 @@ type InnerTestResult<T> = Result<T, InnerTestError>;
 struct Test {
     path: PathBuf,
     command_line_args: String,
+    command_line_args_after: String,
     expected_stdout: String,
     expected_stderr: String,
     expected_exit_status: Option<i32>,
@@ -81,6 +82,7 @@ fn append_line(s: &mut String, line: &str) {
 
 fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
     let mut command_line_args = String::new();
+    let mut command_line_args_after = String::new();
     let mut expected_stdout = String::new();
     let mut expected_stderr = String::new();
     let mut expected_exit_status = None;
@@ -106,6 +108,10 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
             // args:
             } else if line.starts_with(&config.test_args_prefix) {
                 command_line_args = strip_prefix(line, &config.test_args_prefix).to_string();
+
+            // args after:
+            } else if line.starts_with(&config.test_args_after_prefix) {
+                command_line_args_after = strip_prefix(line, &config.test_args_after_prefix).to_string();
 
             // expected stdout:
             } else if line.starts_with(&config.test_stdout_prefix) {
@@ -148,6 +154,7 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
     Ok(Test {
         path: test_path.to_owned(),
         command_line_args,
+        command_line_args_after,
         expected_stdout,
         expected_stderr,
         expected_exit_status,
@@ -198,6 +205,15 @@ fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, tes
 
     if !test.command_line_args.is_empty() {
         writeln!(file, "{} {}", config.test_args_prefix, test.command_line_args.trim())?;
+    }
+
+    if !test.command_line_args_after.is_empty() {
+        writeln!(
+            file,
+            "{} {}",
+            config.test_args_after_prefix,
+            test.command_line_args_after.trim()
+        )?;
     }
 
     if Some(0) != output.status.code() {
@@ -303,6 +319,10 @@ impl TestConfig {
                 }
 
                 args.push(test.path.to_string_lossy().to_string());
+
+                args.extend(shlex::split(&test.command_line_args_after).ok_or_else(|| {
+                    InnerTestError::ErrorParsingArgs(file.clone(), test.command_line_args_after.to_owned())
+                })?);
 
                 let mut command = Command::new(&self.binary_path);
                 command.args(args);

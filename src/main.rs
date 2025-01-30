@@ -21,8 +21,19 @@ struct Args {
     )]
     test_prefix: String,
 
-    #[clap(long, default_value = "args:", help = "The program to run for each test file")]
+    #[clap(
+        long,
+        default_value = "args:",
+        help = "Prefix string for the command line arguments to be passed to the command, before the program file path."
+    )]
     args_prefix: String,
+
+    #[clap(
+        long,
+        default_value = "args after:",
+        help = "Prefix string for the command line arguments to be passed to the command, after the program file path."
+    )]
+    args_after_prefix: String,
 
     #[clap(
         long,
@@ -60,6 +71,7 @@ fn main() {
         args.test_path,
         &args.test_prefix,
         &args.args_prefix,
+        &args.args_after_prefix,
         &args.stdout_prefix,
         &args.stderr_prefix,
         &args.exit_status_prefix,
