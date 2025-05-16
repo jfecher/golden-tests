@@ -1,6 +1,8 @@
-use crate::config::TestConfig;
-use crate::diff_printer::DiffPrinter;
-use crate::error::{InnerTestError, TestResult};
+use crate::{
+    config::TestConfig,
+    diff_printer::DiffPrinter,
+    error::{InnerTestError, TestResult},
+};
 
 use colored::Colorize;
 use similar::TextDiff;
@@ -13,10 +15,12 @@ use rayon::iter::ParallelIterator;
 #[cfg(feature = "progress-bar")]
 use indicatif::ProgressBar;
 
-use std::fs::File;
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::{
+    fs::File,
+    io::{Read, Write},
+    path::{Path, PathBuf},
+    process::{Command, Output},
+};
 
 type InnerTestResult<T> = Result<T, InnerTestError>;
 
@@ -309,14 +313,14 @@ impl TestConfig {
                 #[cfg(feature = "progress-bar")]
                 progress.inc(1);
                 let test = parse_test(&file, self)?;
-                let mut args = shlex::split(&test.command_line_args)
-                    .ok_or_else(|| InnerTestError::ErrorParsingArgs(file.clone(), test.command_line_args.to_owned()))?;
+
+                let mut args = Self::split_args(&self.base_args, &file)?;
+                args.extend(Self::split_args(&test.command_line_args, &file)?);
 
                 args.push(test.path.to_string_lossy().to_string());
 
-                args.extend(shlex::split(&test.command_line_args_after).ok_or_else(|| {
-                    InnerTestError::ErrorParsingArgs(file.clone(), test.command_line_args_after.to_owned())
-                })?);
+                args.extend(Self::split_args(&self.base_args_after, &file)?);
+                args.extend(Self::split_args(&test.command_line_args_after, &file)?);
 
                 let mut command = Command::new(&self.binary_path);
                 command.args(args);
@@ -339,6 +343,12 @@ impl TestConfig {
         #[cfg(feature = "progress-bar")]
         progress.finish_and_clear();
         results
+    }
+
+    /// Splits a string into separate command-line args.
+    /// Usually this means separating by spaces.
+    fn split_args(s: &str, file: &Path) -> Result<Vec<String>, InnerTestError> {
+        shlex::split(s).ok_or_else(|| InnerTestError::ErrorParsingArgs(file.to_path_buf(), s.to_owned()))
     }
 
     /// Recurse through all the files in self.path, parse them all,

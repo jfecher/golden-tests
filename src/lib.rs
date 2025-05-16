@@ -39,7 +39,7 @@
 //!
 //! Now you can start adding tests to `directory/with/tests` and each test should
 //! be automatically found and ran by goldentests whenever you run `cargo test`.
-//! Here's a quick example of a test file that uses all of goldentest's features:
+//! Here's a quick example of a test file that uses most of goldentest's features:
 //!
 //! ```python
 //! import sys

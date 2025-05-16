@@ -68,6 +68,16 @@ pub struct TestConfig {
     /// Flag the current output as correct and regenerate the test files. This assumes the order of
     /// the `goldenfiles` sections can be moved around.
     pub overwrite_tests: bool,
+
+    /// Arguments to always include in the command-line args for testing the program.
+    /// For example, if this is `foo` and the test specifies `args: bar baz` then the
+    /// binary will be invoked via `<binary> foo bar baz <filename> <args-after>`
+    pub base_args: String,
+
+    /// Arguments to always include in the command-line args for testing the program.
+    /// For example, if this is `foo` and the test specifies `args after: bar baz` then the
+    /// binary will be invoked via `<binary> <args> <filename> foo bar baz`
+    pub base_args_after: String,
 }
 
 impl TestConfig {
@@ -172,6 +182,8 @@ impl TestConfig {
             test_exit_status_prefix: prefixed(test_exit_status_prefix),
             test_line_prefix,
             overwrite_tests,
+            base_args: String::new(),
+            base_args_after: String::new(),
         }
     }
 }

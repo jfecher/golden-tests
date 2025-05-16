@@ -78,7 +78,7 @@ The second way to use goldentests is as a rust library for writing
 integration tests. Using this method will have `goldentests` run
 each time you call `cargo test`. To get started plop this into your `Cargo.toml`:
 ```toml
-goldentests = "1.2"
+goldentests = "1.3"
 ```
 
 And create an integration test in `tests/goldentests.rs`. The specific name
@@ -116,6 +116,11 @@ This is what the `"// "` parameter was in the rust example. You can change this 
 to change the prefix that goldentests looks for when parsing a file. For most languages,
 this should be a comment of some kind. E.g. if we we're testing haskell, we would use `-- `
 as the test-line prefix.
+
+It can sometimes be convenient when using golden-tests via the Rust testing setup to have
+arguments that are included by default for every program. These can be added by setting
+the `base_args` and `base_args_after` fields of the `TestConfig` object. Among other things,
+this can be used to easily re-run a set of tests with different arguments.
 
 ### Advanced Usage
 
