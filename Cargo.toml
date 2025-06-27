@@ -25,7 +25,7 @@ colored = "2.0.0"
 shlex = "1.1.0"
 similar = "2.1.0"
 rayon = { version = "1.5.1", optional = true }
-indicatif = { version = "0.16.2", optional = true }
+indicatif = { version = "0.17.11", optional = true }
 
 # clap is only needed for the goldentest binary,
 # enabling it will have no effect on the library version
