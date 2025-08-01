@@ -62,10 +62,10 @@ struct Args {
     )]
     overwrite: bool,
 
-    #[clap(long, help = "Arguments to add before the file name when running every test file")]
+    #[clap(long, default_value = "", help = "Arguments to add before the file name when running every test file")]
     base_args: String,
 
-    #[clap(long, help = "Arguments to add after the file name when running every test file")]
+    #[clap(long, default_value = "", help = "Arguments to add after the file name when running every test file")]
     base_args_after: String,
 }
 
