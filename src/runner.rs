@@ -99,7 +99,19 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
 
     let mut state = TestParseState::Neutral;
     for line in contents.lines() {
-        if line.starts_with(&config.test_line_prefix) {
+        let s = line.starts_with(&config.test_line_prefix);
+        println!("`{line}` starts with `{}`: {s}", config.test_line_prefix);
+
+        if line.contains("args") {
+            println!("test arg prefix = `{}`", config.test_args_prefix);
+            print!("bytes:");
+            for byte in line.bytes() {
+                print!(" {byte}");
+            }
+            println!();
+        }
+
+        if s {
             // If we're currently reading stdout or stderr, append the line to the expected output
             if state == TestParseState::ReadingExpectedStdout {
                 append_line(&mut expected_stdout, strip_prefix(line, &config.test_line_prefix))
@@ -155,6 +167,7 @@ fn parse_test(test_path: &Path, config: &TestConfig) -> InnerTestResult<Test> {
     let expected_stdout = expected_stdout.replace("\r", "");
     let expected_stderr = expected_stderr.replace("\r", "");
 
+    println!("args = `{}`", command_line_args);
     Ok(Test {
         path: test_path.to_owned(),
         command_line_args,
@@ -324,6 +337,8 @@ impl TestConfig {
 
                 let mut command = Command::new(&self.binary_path);
                 command.args(args);
+                println!("$ {command:?}");
+
                 let output =
                     command.output().map_err(|err| InnerTestError::CommandError(file.clone(), command, err))?;
 
