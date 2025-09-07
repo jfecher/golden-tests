@@ -1,4 +1,5 @@
 mod config;
+mod config_file;
 mod diff_printer;
 mod error;
 mod runner;
@@ -56,37 +57,61 @@ struct Args {
     )]
     exit_status_prefix: String,
 
-    #[clap(
-        long,
-        help = "Update the expected output of each test file to match the actual output"
-    )]
-    overwrite: bool,
-
     #[clap(long, default_value = "", help = "Arguments to add before the file name when running every test file")]
     base_args: String,
 
     #[clap(long, default_value = "", help = "Arguments to add after the file name when running every test file")]
     base_args_after: String,
+
+    #[clap(flatten)]
+    cli_args: CliOnlyArgs,
+}
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct CliOnlyArgs {
+    #[clap(
+        long,
+        help = "Update the expected output of each test file to match the actual output"
+    )]
+    overwrite: bool,
 }
 
 fn main() {
-    let args = Args::parse();
-    let test_line_prefix = args.test_prefix.to_string();
-    let prefixed = |s| format!("{}{}", test_line_prefix, s);
-
-    let config = TestConfig {
-        binary_path: args.binary_path,
-        test_path: args.test_path,
-        test_line_prefix: args.test_prefix,
-        test_args_prefix: prefixed(args.args_prefix),
-        test_args_after_prefix: prefixed(args.args_after_prefix),
-        test_stdout_prefix: prefixed(args.stdout_prefix),
-        test_stderr_prefix: prefixed(args.stderr_prefix),
-        test_exit_status_prefix: prefixed(args.exit_status_prefix),
-        overwrite_tests: args.overwrite,
-        base_args: args.base_args,
-        base_args_after: args.base_args_after,
+    let mut config = match config_file::read_config_file(None) {
+        Some(mut config) => {
+            let args = CliOnlyArgs::parse();
+            config.overwrite_tests = args.overwrite;
+            config
+        }
+        None => Args::parse().into_test_config(),
     };
 
+    let test_line_prefix = config.test_line_prefix.to_string();
+    let prefixed = |s| format!("{}{}", test_line_prefix, s);
+    config.test_args_prefix = prefixed(config.test_args_prefix);
+    config.test_args_after_prefix = prefixed(config.test_args_after_prefix);
+    config.test_stdout_prefix = prefixed(config.test_stdout_prefix);
+    config.test_stderr_prefix = prefixed(config.test_stderr_prefix);
+    config.test_exit_status_prefix = prefixed(config.test_exit_status_prefix);
+
     config.run_tests().unwrap_or_else(|_| std::process::exit(1));
+}
+
+impl Args {
+    fn into_test_config(self) -> TestConfig {
+        TestConfig {
+            binary_path: self.binary_path,
+            test_path: self.test_path,
+            test_line_prefix: self.test_prefix,
+            test_args_prefix: self.args_prefix,
+            test_args_after_prefix: self.args_after_prefix,
+            test_stdout_prefix: self.stdout_prefix,
+            test_stderr_prefix: self.stderr_prefix,
+            test_exit_status_prefix: self.exit_status_prefix,
+            overwrite_tests: self.cli_args.overwrite,
+            base_args: self.base_args,
+            base_args_after: self.base_args_after,
+        }
+    }
 }

@@ -72,6 +72,18 @@ to change the prefix that goldentests looks for when parsing a file. For most la
 this should be a comment of some kind. E.g. if we we're testing haskell, we would use `-- `
 as the test-line prefix.
 
+#### `goldentests.toml`
+
+Since golden-tests requires a lot of configuration to run, you can optionally provide a
+`goldentests.toml` file in your project's directory to provide each argument:
+
+```
+# in goldentests.toml
+binary_path = "/bin/python"
+test_path = "path-to-tests"
+test_line_prefix = "# "
+```
+
 #### As a rust integration test
 
 The second way to use goldentests is as a rust library for writing
@@ -90,12 +102,22 @@ use goldentests::{ TestConfig, TestResult };
 
 #[test]
 fn run_golden_tests() -> TestResult<()> {
-    let config = TestConfig::new("target/debug/my-binary", "my-test-path", "// ");
-    config.run_tests()
+    TestConfig::new_from_config_file(None).run_tests()
 }
 ```
 
-This will tell goldentests to find all files recursively in `my-test-path` and
+Supplying `None` as an argument will tell goldentests to automatically search for
+a `goldentests.toml` config file. Alternatively, we could have provided the path
+ourselves. An example of a config file may look like the following:
+
+```
+# in goldentests.toml
+binary_path = "target/debug/my-binary"
+test_path = "path/to/tests"
+test_line_prefix = "// "
+```
+
+This will tell goldentests to find all files recursively in `path/to/tests` and
 run `target/debug/my-binary` to use the files in some way to produce the expected
 output.  For example, if we're testing a compiler for a C-like language a test
 file for us may look like this:

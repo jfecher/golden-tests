@@ -58,6 +58,7 @@
 //! # expected stderr: error!
 //! ```
 pub mod config;
+mod config_file;
 mod diff_printer;
 pub mod error;
 mod runner;

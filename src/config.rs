@@ -1,5 +1,14 @@
 use std::path::PathBuf;
 
+use serde::Deserialize;
+
+const DEFAULT_ARGS_PREFIX: fn() -> String = || "args:".to_string();
+const DEFAULT_ARGS_AFTER_PREFIX: fn() -> String = || "args after:".to_string();
+const DEFAULT_STDOUT_PREFIX: fn() -> String = || "expected stdout:".to_string();
+const DEFAULT_STDERR_PREFIX: fn() -> String = || "expected stderr:".to_string();
+const DEFAULT_EXIT_STATUS_PREFIX: fn() -> String = || "expected exit status:".to_string();
+
+#[derive(Deserialize)]
 pub struct TestConfig {
     /// The binary path to your program, typically "target/debug/myprogram"
     pub binary_path: PathBuf,
@@ -19,11 +28,13 @@ pub struct TestConfig {
     /// The "args:" keyword used while parsing tests. Anything after
     /// `test_line_prefix + test_args_prefix` is read in as shell arguments to
     /// the program, passed before the test file path.
+    #[serde(default = "DEFAULT_ARGS_PREFIX")]
     pub test_args_prefix: String,
 
     /// The "args after:" keyword used while parsing tests. Anything after
     /// `test_line_prefix + test_args_after_prefix` is read in as shell
     /// arguments to the program, passed after the test file path.
+    #[serde(default = "DEFAULT_ARGS_AFTER_PREFIX")]
     pub test_args_after_prefix: String,
 
     /// The "expected stdout:" keyword used while parsing tests. Any line starting
@@ -39,6 +50,7 @@ pub struct TestConfig {
     ///
     /// // Normal comment, expected stdout is done being read.
     /// ```
+    #[serde(default = "DEFAULT_STDOUT_PREFIX")]
     pub test_stdout_prefix: String,
 
     /// The "expected stderr:" keyword used while parsing tests. Any line starting
@@ -54,6 +66,7 @@ pub struct TestConfig {
     ///
     /// -- Normal comment, expected stderr is done being read.
     /// ```
+    #[serde(default = "DEFAULT_STDERR_PREFIX")]
     pub test_stderr_prefix: String,
 
     /// The "expected exit status:" keyword used while parsing tests. This will expect an
@@ -63,20 +76,24 @@ pub struct TestConfig {
     /// ```rust
     /// // expected exit status: 0
     /// ```
+    #[serde(default = "DEFAULT_EXIT_STATUS_PREFIX")]
     pub test_exit_status_prefix: String,
 
     /// Flag the current output as correct and regenerate the test files. This assumes the order of
     /// the `goldenfiles` sections can be moved around.
+    #[serde(skip)]
     pub overwrite_tests: bool,
 
     /// Arguments to always include in the command-line args for testing the program.
     /// For example, if this is `foo` and the test specifies `args: bar baz` then the
     /// binary will be invoked via `<binary> foo bar baz <filename> <args-after>`
+    #[serde(default)]
     pub base_args: String,
 
     /// Arguments to always include in the command-line args for testing the program.
     /// For example, if this is `foo` and the test specifies `args after: bar baz` then the
     /// binary will be invoked via `<binary> <args> <filename> foo bar baz`
+    #[serde(default)]
     pub base_args_after: String,
 }
 
@@ -142,6 +159,24 @@ impl TestConfig {
             "expected exit status:",
             false,
         )
+    }
+
+    /// Creates a TestConfig from reading a `goldentests.toml` configuration file.
+    ///
+    /// This will use the provided path to the configuration file, if it is provided.
+    /// Otherwise, this will attempt to search the current directory and parent directories
+    /// for a config file automatically.
+    ///
+    /// This function panics if the configuration file was not found or could not be read.
+    #[allow(unused)]
+    pub fn new_from_config_file(path: Option<PathBuf>) -> TestConfig {
+        super::config_file::read_config_file(path.clone()).unwrap_or_else(|| {
+            if let Some(path) = path {
+                panic!("Could not read from `{:?}`", path)
+            } else {
+                panic!("Could not find a `goldentests.toml` in this directory or in parent directories")
+            }
+        })
     }
 
     /// This function is provided in case you want to change the default keywords used when
