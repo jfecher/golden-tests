@@ -23,7 +23,7 @@ fn find_config_file() -> Option<PathBuf> {
     // Search at most 5 parent directories
     let max_tries = 5;
 
-    for _ in 0 .. max_tries {
+    for _ in 0..max_tries {
         if path.try_exists().unwrap_or(false) {
             return Some(path);
         }
