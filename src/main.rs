@@ -75,7 +75,7 @@ struct Args {
     cli_args: CliOnlyArgs,
 
     #[cfg(feature = "parallel")]
-    #[clap(long, help = "Number of max. parallel jobs")]
+    #[clap(short, long, help = "Number of max. parallel jobs")]
     jobs: Option<usize>,
 }
 
