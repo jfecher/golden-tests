@@ -57,14 +57,26 @@ struct Args {
     )]
     exit_status_prefix: String,
 
-    #[clap(long, default_value = "", help = "Arguments to add before the file name when running every test file")]
+    #[clap(
+        long,
+        default_value = "",
+        help = "Arguments to add before the file name when running every test file"
+    )]
     base_args: String,
 
-    #[clap(long, default_value = "", help = "Arguments to add after the file name when running every test file")]
+    #[clap(
+        long,
+        default_value = "",
+        help = "Arguments to add after the file name when running every test file"
+    )]
     base_args_after: String,
 
     #[clap(flatten)]
     cli_args: CliOnlyArgs,
+
+    #[cfg(feature = "parallel")]
+    #[clap(short, long, help = "Number of max. parallel jobs")]
+    jobs: Option<usize>,
 }
 
 #[derive(Parser, Debug)]
@@ -84,7 +96,16 @@ fn main() {
             config.overwrite_tests = args.overwrite;
             config
         }
-        None => Args::parse().into_test_config(),
+        None => {
+            let args = Args::parse();
+
+            #[cfg(feature = "parallel")]
+            if let Some(max_jobs) = args.jobs {
+                rayon::ThreadPoolBuilder::new().num_threads(max_jobs).build_global().unwrap();
+            }
+
+            Args::parse().into_test_config()
+        }
     };
 
     let test_line_prefix = config.test_line_prefix.to_string();
