@@ -18,8 +18,7 @@ pub struct TestConfig {
     /// If this is a directory, it will be searched recursively for all files.
     pub test_path: PathBuf,
 
-    /// Only test files in the path that match the glob. Multiple globs may be used. A glob may be
-    /// negated with a '!' prefix.
+    /// Only test files in the path that match the glob. Multiple globs may be used. A glob may be negated with a '!' prefix.
     #[serde(default)]
     pub glob: Vec<String>,
 
@@ -112,7 +111,7 @@ impl TestConfig {
     ///
     /// ```rust
     /// use goldentests::TestConfig;
-    /// let config = TestConfig::new("target/debug/my-compiler", "examples/goldentests", "// ");
+    /// let config = TestConfig::new("target/debug/my-compiler", "examples/goldentests", vec![], "// ");
     /// ```
     ///
     /// This will give us the default keywords when parsing our test files which allows
