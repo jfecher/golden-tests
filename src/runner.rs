@@ -5,6 +5,7 @@ use crate::{
 };
 
 use colored::Colorize;
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use similar::TextDiff;
 
 #[cfg(feature = "parallel")]
@@ -41,7 +42,7 @@ enum TestParseState {
     ReadingExpectedStderr,
 }
 
-fn find_tests(test_path: &Path) -> (Vec<PathBuf>, Vec<InnerTestError>) {
+fn find_tests(test_path: &Path, glob_set: Option<&GlobSet>) -> (Vec<PathBuf>, Vec<InnerTestError>) {
     let mut tests = vec![];
     let mut errors = vec![];
 
@@ -61,14 +62,14 @@ fn find_tests(test_path: &Path) -> (Vec<PathBuf>, Vec<InnerTestError>) {
             };
 
             if path.is_dir() {
-                let (mut more_tests, mut more_errors) = find_tests(&path);
+                let (mut more_tests, mut more_errors) = find_tests(&path, glob_set);
                 tests.append(&mut more_tests);
                 errors.append(&mut more_errors);
-            } else {
+            } else if glob_set.map(|g| g.is_match(&path)).unwrap_or(true) {
                 tests.push(path);
             }
         }
-    } else {
+    } else if glob_set.map(|g| g.is_match(test_path)).unwrap_or(true) {
         tests.push(test_path.into());
     }
 
@@ -355,7 +356,30 @@ impl TestConfig {
     /// Recurse through all the files in self.path, parse them all,
     /// and run the target program with the arguments specified in the file.
     pub fn run_tests(&self) -> TestResult<()> {
-        let (tests, path_errors) = find_tests(&self.test_path);
+        let glob_set = if self.glob.is_empty() {
+            None
+        } else {
+            let mut builder = GlobSetBuilder::new();
+            for glob in &self.glob {
+                let glob = match Glob::new(glob) {
+                    Ok(glob) => glob,
+                    Err(err) => {
+                        eprintln!("Invalid glob: {}", err);
+                        return Err(());
+                    }
+                };
+                builder.add(glob);
+            }
+            match builder.build() {
+                Err(err) => {
+                    eprintln!("Unable to build glob set: {}", err);
+                    return Err(());
+                }
+                Ok(glob_set) => Some(glob_set),
+            }
+        };
+
+        let (tests, path_errors) = find_tests(&self.test_path, glob_set.as_ref());
         let outputs = self.test_all(tests);
 
         for error in path_errors {

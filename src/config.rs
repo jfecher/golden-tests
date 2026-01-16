@@ -18,6 +18,10 @@ pub struct TestConfig {
     /// If this is a directory, it will be searched recursively for all files.
     pub test_path: PathBuf,
 
+    /// Only test files in the path that match the glob. Multiple globs may be used.
+    #[serde(default)]
+    pub glob: Vec<String>,
+
     /// The sequence of characters starting at the beginning of a line that
     /// all test options should be prefixed with. This is typically a comment
     /// in your language. For example, if we had a C like language we could
@@ -143,7 +147,12 @@ impl TestConfig {
     /// If you want to change these default keywords you can also create a TestConfig
     /// via `TestConfig::with_custom_keywords` which will allow you to specify each.
     #[allow(unused)]
-    pub fn new<Binary, Tests>(binary_path: Binary, test_path: Tests, test_line_prefix: &str) -> TestConfig
+    pub fn new<Binary, Tests>(
+        binary_path: Binary,
+        test_path: Tests,
+        glob: Vec<String>,
+        test_line_prefix: &str,
+    ) -> TestConfig
     where
         Binary: Into<PathBuf>,
         Tests: Into<PathBuf>,
@@ -151,6 +160,7 @@ impl TestConfig {
         TestConfig::with_custom_keywords(
             binary_path,
             test_path,
+            glob,
             test_line_prefix,
             "args:",
             "args after:",
@@ -189,6 +199,7 @@ impl TestConfig {
     pub fn with_custom_keywords<Binary, Tests>(
         binary_path: Binary,
         test_path: Tests,
+        glob: Vec<String>,
         test_line_prefix: &str,
         test_args_prefix: &str,
         test_args_after_prefix: &str,
@@ -210,6 +221,7 @@ impl TestConfig {
         TestConfig {
             binary_path,
             test_path,
+            glob,
             test_args_prefix: prefixed(test_args_prefix),
             test_args_after_prefix: prefixed(test_args_after_prefix),
             test_stdout_prefix: prefixed(test_stdout_prefix),

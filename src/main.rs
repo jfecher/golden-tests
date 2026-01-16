@@ -18,6 +18,13 @@ struct Args {
     test_path: PathBuf,
 
     #[clap(
+        long,
+        short,
+        help = "Only test files in the path that match the glob. Multiple globs may be used."
+    )]
+    glob: Vec<String>,
+
+    #[clap(
         help = "Prefix string for test commands. This is usually the same as the comment syntax in the language you are testing. For example, in C this would be '// '"
     )]
     test_prefix: String,
@@ -124,6 +131,7 @@ impl Args {
         TestConfig {
             binary_path: self.binary_path,
             test_path: self.test_path,
+            glob: self.glob.clone(),
             test_line_prefix: self.test_prefix,
             test_args_prefix: self.args_prefix,
             test_args_after_prefix: self.args_after_prefix,
