@@ -20,7 +20,7 @@ struct Args {
     #[clap(
         long,
         short,
-        help = "Only test files in the path that match the glob. Multiple globs may be used."
+        help = "Only test files in the path that match the glob. Multiple globs may be used. A glob may be negated with a '!' prefix."
     )]
     glob: Vec<String>,
 
