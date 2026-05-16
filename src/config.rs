@@ -159,7 +159,7 @@ impl TestConfig {
         TestConfig::with_custom_keywords(
             binary_path,
             test_path,
-            glob,
+            glob: Vec::new(),
             test_line_prefix,
             "args:",
             "args after:",
