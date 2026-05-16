@@ -111,7 +111,7 @@ impl TestConfig {
     ///
     /// ```rust
     /// use goldentests::TestConfig;
-    /// let config = TestConfig::new("target/debug/my-compiler", "examples/goldentests", vec![], "// ");
+    /// let config = TestConfig::new("target/debug/my-compiler", "examples/goldentests", "// ");
     /// ```
     ///
     /// This will give us the default keywords when parsing our test files which allows
