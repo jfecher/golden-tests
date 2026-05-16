@@ -150,7 +150,6 @@ impl TestConfig {
     pub fn new<Binary, Tests>(
         binary_path: Binary,
         test_path: Tests,
-        glob: Vec<String>,
         test_line_prefix: &str,
     ) -> TestConfig
     where
