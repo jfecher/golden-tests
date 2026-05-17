@@ -17,9 +17,7 @@ impl Globs {
         let mut include_builder = GlobSetBuilder::new();
         let mut exclude_builder = GlobSetBuilder::new();
 
-        println!("globs: {glob_strings:?}");
         for glob in glob_strings {
-            println!("glob: {glob}");
             match glob.strip_prefix('!') {
                 Some(glob) => {
                     exclude_builder.add(build_glob(glob)?);

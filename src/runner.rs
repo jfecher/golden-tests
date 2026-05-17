@@ -66,7 +66,6 @@ fn find_tests(test_path: &Path, globs: &Globs) -> (Vec<PathBuf>, Vec<InnerTestEr
                 tests.append(&mut more_tests);
                 errors.append(&mut more_errors);
             } else if globs.is_match(&path) {
-                println!("globs match {path:?}: globs: {globs:?}");
                 tests.push(path);
             }
         }
@@ -184,9 +183,7 @@ fn write_expected_output_for_stream(
         1 if lines[0].len() == 0 => Ok(()),
         // If the line is short and nice, write that line
         1 if lines[0].len() < 80 => {
-            write!(file, "{} ", marker)?;
-            file.write_all(expected)?;
-            writeln!(file, "")
+            writeln!(file, "{} {}", marker, lines[0])
         }
         // Otherwise we write it more longform
         _ => {
