@@ -2,6 +2,7 @@ mod config;
 mod config_file;
 mod diff_printer;
 mod error;
+mod glob;
 mod runner;
 
 use crate::config::TestConfig;
@@ -16,6 +17,13 @@ struct Args {
 
     #[clap(help = "The directory to search for test files recursively within, or a single file to test")]
     test_path: PathBuf,
+
+    #[clap(
+        long,
+        short,
+        help = "Only test files in the path that match the glob. Multiple globs may be used. A glob may be negated with a '!' prefix."
+    )]
+    glob: Vec<String>,
 
     #[clap(
         help = "Prefix string for test commands. This is usually the same as the comment syntax in the language you are testing. For example, in C this would be '// '"
@@ -124,6 +132,7 @@ impl Args {
         TestConfig {
             binary_path: self.binary_path,
             test_path: self.test_path,
+            glob: self.glob.clone(),
             test_line_prefix: self.test_prefix,
             test_args_prefix: self.args_prefix,
             test_args_after_prefix: self.args_after_prefix,

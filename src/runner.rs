@@ -2,6 +2,7 @@ use crate::{
     config::TestConfig,
     diff_printer::DiffPrinter,
     error::{InnerTestError, TestResult},
+    glob::Globs,
 };
 
 use colored::Colorize;
@@ -41,7 +42,7 @@ enum TestParseState {
     ReadingExpectedStderr,
 }
 
-fn find_tests(test_path: &Path) -> (Vec<PathBuf>, Vec<InnerTestError>) {
+fn find_tests(test_path: &Path, globs: &Globs) -> (Vec<PathBuf>, Vec<InnerTestError>) {
     let mut tests = vec![];
     let mut errors = vec![];
 
@@ -61,14 +62,15 @@ fn find_tests(test_path: &Path) -> (Vec<PathBuf>, Vec<InnerTestError>) {
             };
 
             if path.is_dir() {
-                let (mut more_tests, mut more_errors) = find_tests(&path);
+                let (mut more_tests, mut more_errors) = find_tests(&path, globs);
                 tests.append(&mut more_tests);
                 errors.append(&mut more_errors);
-            } else {
+            } else if globs.is_match(&path) {
+                println!("globs match {path:?}: globs: {globs:?}");
                 tests.push(path);
             }
         }
-    } else {
+    } else if globs.is_match(&test_path) {
         tests.push(test_path.into());
     }
 
@@ -355,7 +357,8 @@ impl TestConfig {
     /// Recurse through all the files in self.path, parse them all,
     /// and run the target program with the arguments specified in the file.
     pub fn run_tests(&self) -> TestResult<()> {
-        let (tests, path_errors) = find_tests(&self.test_path);
+        let globs = Globs::new(&self.glob)?;
+        let (tests, path_errors) = find_tests(&self.test_path, &globs);
         let outputs = self.test_all(tests);
 
         for error in path_errors {

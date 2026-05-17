@@ -82,7 +82,10 @@ Since golden-tests requires a lot of configuration to run, you can optionally pr
 binary_path = "/bin/python"
 test_path = "path-to-tests"
 test_line_prefix = "# "
+glob = "*.py"
 ```
+
+The `glob` argument is optional but useful to only run files of a particular file suffix.
 
 #### As a rust integration test
 

@@ -61,6 +61,7 @@ pub mod config;
 mod config_file;
 mod diff_printer;
 pub mod error;
+pub mod glob;
 mod runner;
 
 pub use config::TestConfig;
