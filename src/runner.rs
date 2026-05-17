@@ -2,10 +2,10 @@ use crate::{
     config::TestConfig,
     diff_printer::DiffPrinter,
     error::{InnerTestError, TestResult},
+    glob::Globs,
 };
 
 use colored::Colorize;
-use globset::{Glob, GlobSet, GlobSetBuilder};
 use similar::TextDiff;
 
 #[cfg(feature = "parallel")]
@@ -42,25 +42,6 @@ enum TestParseState {
     ReadingExpectedStderr,
 }
 
-#[derive(Debug, Default)]
-struct Globs {
-    include: Option<GlobSet>,
-    exclude: Option<GlobSet>,
-}
-
-impl Globs {
-    fn is_match<P: AsRef<Path>>(&self, path: &P) -> bool {
-        let mut match_ = true;
-        if let Some(include_set) = &self.include {
-            match_ &= include_set.is_match(path);
-        }
-        if let Some(exclude_set) = &self.exclude {
-            match_ &= !exclude_set.is_match(path);
-        }
-        match_
-    }
-}
-
 fn find_tests(test_path: &Path, globs: &Globs) -> (Vec<PathBuf>, Vec<InnerTestError>) {
     let mut tests = vec![];
     let mut errors = vec![];
@@ -85,6 +66,7 @@ fn find_tests(test_path: &Path, globs: &Globs) -> (Vec<PathBuf>, Vec<InnerTestEr
                 tests.append(&mut more_tests);
                 errors.append(&mut more_errors);
             } else if globs.is_match(&path) {
+                println!("globs match {path:?}: globs: {globs:?}");
                 tests.push(path);
             }
         }
@@ -375,33 +357,7 @@ impl TestConfig {
     /// Recurse through all the files in self.path, parse them all,
     /// and run the target program with the arguments specified in the file.
     pub fn run_tests(&self) -> TestResult<()> {
-        let mut globs = Globs::default();
-
-        let mut include_builder = GlobSetBuilder::new();
-        let mut exclude_builder = GlobSetBuilder::new();
-
-        for glob in &self.glob {
-            match glob.strip_prefix('!') {
-                Some(glob) => {
-                    exclude_builder.add(build_glob(glob)?);
-                }
-                None => {
-                    include_builder.add(build_glob(glob)?);
-                }
-            }
-        }
-
-        let include = build_glob_set(include_builder)?;
-        let exclude = build_glob_set(exclude_builder)?;
-
-        if !include.is_empty() {
-            globs.include = Some(include);
-        }
-
-        if !exclude.is_empty() {
-            globs.exclude = Some(exclude);
-        }
-
+        let globs = Globs::new(&self.glob)?;
         let (tests, path_errors) = find_tests(&self.test_path, &globs);
         let outputs = self.test_all(tests);
 
@@ -467,26 +423,6 @@ impl TestConfig {
             Err(())
         } else {
             Ok(())
-        }
-    }
-}
-
-fn build_glob(s: &str) -> TestResult<Glob> {
-    match Glob::new(s) {
-        Ok(glob) => Ok(glob),
-        Err(err) => {
-            eprintln!("Invalid glob: {}", err);
-            Err(())
-        }
-    }
-}
-
-fn build_glob_set(builder: GlobSetBuilder) -> TestResult<GlobSet> {
-    match builder.build() {
-        Ok(glob_set) => Ok(glob_set),
-        Err(err) => {
-            eprintln!("Unable to build glob set: {}", err);
-            Err(())
         }
     }
 }

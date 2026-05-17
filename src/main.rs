@@ -2,6 +2,7 @@ mod config;
 mod config_file;
 mod diff_printer;
 mod error;
+mod glob;
 mod runner;
 
 use crate::config::TestConfig;

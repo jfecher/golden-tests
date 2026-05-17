@@ -1,6 +1,41 @@
+use std::fmt;
+use std::marker::PhantomData;
 use std::path::PathBuf;
 
+use serde::de::{self, Deserializer, SeqAccess, Visitor};
 use serde::Deserialize;
+
+fn string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct StringOrVec(PhantomData<Vec<String>>);
+
+    impl<'de> Visitor<'de> for StringOrVec {
+        type Value = Vec<String>;
+
+        fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("a string or a list of strings")
+        }
+
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+            Ok(vec![v.to_string()])
+        }
+
+        fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+            Ok(vec![v])
+        }
+
+        fn visit_seq<S>(self, seq: S) -> Result<Self::Value, S::Error>
+        where
+            S: SeqAccess<'de>,
+        {
+            Deserialize::deserialize(de::value::SeqAccessDeserializer::new(seq))
+        }
+    }
+
+    deserializer.deserialize_any(StringOrVec(PhantomData))
+}
 
 const DEFAULT_ARGS_PREFIX: fn() -> String = || "args:".to_string();
 const DEFAULT_ARGS_AFTER_PREFIX: fn() -> String = || "args after:".to_string();
@@ -19,7 +54,7 @@ pub struct TestConfig {
     pub test_path: PathBuf,
 
     /// Only test files in the path that match the glob. Multiple globs may be used. A glob may be negated with a '!' prefix.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "string_or_vec")]
     pub glob: Vec<String>,
 
     /// The sequence of characters starting at the beginning of a line that
@@ -147,11 +182,7 @@ impl TestConfig {
     /// If you want to change these default keywords you can also create a TestConfig
     /// via `TestConfig::with_custom_keywords` which will allow you to specify each.
     #[allow(unused)]
-    pub fn new<Binary, Tests>(
-        binary_path: Binary,
-        test_path: Tests,
-        test_line_prefix: &str,
-    ) -> TestConfig
+    pub fn new<Binary, Tests>(binary_path: Binary, test_path: Tests, test_line_prefix: &str) -> TestConfig
     where
         Binary: Into<PathBuf>,
         Tests: Into<PathBuf>,
@@ -159,7 +190,7 @@ impl TestConfig {
         TestConfig::with_custom_keywords(
             binary_path,
             test_path,
-            glob: Vec::new(),
+            Vec::new(),
             test_line_prefix,
             "args:",
             "args after:",
