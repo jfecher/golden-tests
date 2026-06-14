@@ -95,6 +95,13 @@ struct CliOnlyArgs {
         help = "Update the expected output of each test file to match the actual output"
     )]
     overwrite: bool,
+
+    #[clap(
+        long,
+        short,
+        help = "Interactively review each failing test file, accepting or rejecting its diff one by one"
+    )]
+    interactive: bool,
 }
 
 fn main() {
@@ -102,6 +109,7 @@ fn main() {
         Some(mut config) => {
             let args = CliOnlyArgs::parse();
             config.overwrite_tests = args.overwrite;
+            config.interactive = args.interactive;
             config
         }
         None => {
@@ -124,6 +132,11 @@ fn main() {
     config.test_stderr_prefix = prefixed(config.test_stderr_prefix);
     config.test_exit_status_prefix = prefixed(config.test_exit_status_prefix);
 
+    if config.overwrite_tests && config.interactive {
+        eprintln!("error: `--overwrite` and `--interactive` cannot be used together");
+        std::process::exit(1);
+    }
+
     config.run_tests().unwrap_or_else(|_| std::process::exit(1));
 }
 
@@ -140,6 +153,7 @@ impl Args {
             test_stderr_prefix: self.stderr_prefix,
             test_exit_status_prefix: self.exit_status_prefix,
             overwrite_tests: self.cli_args.overwrite,
+            interactive: self.cli_args.interactive,
             base_args: self.base_args,
             base_args_after: self.base_args_after,
         }

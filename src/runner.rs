@@ -25,6 +25,14 @@ use std::{
 
 type InnerTestResult<T> = Result<T, InnerTestError>;
 
+/// Data captured during a parallel test run that may be needed to overwrite
+/// a failing test file later if `--interactive` was passed.
+struct PendingOverwrite {
+    file: PathBuf,
+    output: Output,
+    test: Test,
+}
+
 struct Test {
     path: PathBuf,
     command_line_args: String,
@@ -303,7 +311,7 @@ fn into_iter<T: IntoIterator>(value: T) -> T::IntoIter {
 }
 
 impl TestConfig {
-    fn test_all(&self, test_sources: Vec<PathBuf>) -> Vec<InnerTestResult<()>> {
+    fn test_all(&self, test_sources: Vec<PathBuf>) -> Vec<(InnerTestResult<()>, Option<PendingOverwrite>)> {
         #[cfg(feature = "progress-bar")]
         let progress = ProgressBar::new(test_sources.len() as u64);
 
@@ -311,32 +319,42 @@ impl TestConfig {
             .map(|file| {
                 #[cfg(feature = "progress-bar")]
                 progress.inc(1);
-                let test = parse_test(&file, self)?;
+                let run = || -> InnerTestResult<(InnerTestResult<()>, Option<PendingOverwrite>)> {
+                    let test = parse_test(&file, self)?;
 
-                let mut args = Self::split_args(&self.base_args, &file)?;
-                args.extend(Self::split_args(&test.command_line_args, &file)?);
+                    let mut args = Self::split_args(&self.base_args, &file)?;
+                    args.extend(Self::split_args(&test.command_line_args, &file)?);
 
-                args.push(test.path.to_string_lossy().to_string());
+                    args.push(test.path.to_string_lossy().to_string());
 
-                args.extend(Self::split_args(&self.base_args_after, &file)?);
-                args.extend(Self::split_args(&test.command_line_args_after, &file)?);
+                    args.extend(Self::split_args(&self.base_args_after, &file)?);
+                    args.extend(Self::split_args(&test.command_line_args_after, &file)?);
 
-                let mut command = Command::new(&self.binary_path);
-                command.args(args);
+                    let mut command = Command::new(&self.binary_path);
+                    command.args(args);
 
-                let output =
-                    command.output().map_err(|err| InnerTestError::CommandError(file.clone(), command, err))?;
+                    let output =
+                        command.output().map_err(|err| InnerTestError::CommandError(file.clone(), command, err))?;
 
-                let differences = check_for_differences(&test.path, &output, &test);
-                if self.overwrite_tests {
-                    if let Err(InnerTestError::TestFailed { path, errors }) = differences {
-                        overwrite_test(&file, self, &output, &test)
-                            .map_err(|err| InnerTestError::IoError(file.to_owned(), err))?;
+                    let differences = check_for_differences(&test.path, &output, &test);
+                    if self.overwrite_tests {
+                        if let Err(InnerTestError::TestFailed { path, errors }) = differences {
+                            overwrite_test(&file, self, &output, &test)
+                                .map_err(|err| InnerTestError::IoError(file.to_owned(), err))?;
 
-                        return Err(InnerTestError::TestUpdated { path, errors });
+                            return Ok((Err(InnerTestError::TestUpdated { path, errors }), None));
+                        }
+                    } else if self.interactive {
+                        if let Err(InnerTestError::TestFailed { .. }) = &differences {
+                            // Defer the overwrite decision to the serial review phase in `run_tests`.
+                            return Ok((differences, Some(PendingOverwrite { file, output, test })));
+                        }
                     }
-                }
-                differences
+                    Ok((differences, None))
+                };
+
+                // Lift any early-return error into the result slot so it is reported like before.
+                run().unwrap_or_else(|err| (Err(err), None))
             })
             .collect();
 
@@ -356,17 +374,21 @@ impl TestConfig {
     pub fn run_tests(&self) -> TestResult<()> {
         let globs = Globs::new(&self.glob)?;
         let (tests, path_errors) = find_tests(&self.test_path, &globs);
-        let outputs = self.test_all(tests);
+        let mut outputs = self.test_all(tests);
 
         for error in path_errors {
             eprintln!("{}", error);
+        }
+
+        if self.interactive {
+            self.review_interactively(&mut outputs);
         }
 
         let total_tests = outputs.len();
         let mut failing_tests = 0;
         let mut can_be_fixed_with_overwrite_tests = 0;
         let mut updated_tests = 0;
-        for result in &outputs {
+        for (result, _) in &outputs {
             match result {
                 Ok(_) => {}
                 Err(InnerTestError::TestUpdated { .. }) => {
@@ -389,11 +411,18 @@ impl TestConfig {
             }
 
             if let Err(err) = result {
-                eprintln!("{}", err)
+                let already_shown = self.interactive
+                    && matches!(
+                        err,
+                        InnerTestError::TestFailed { .. } | InnerTestError::TestUpdated { .. }
+                    );
+                if !already_shown {
+                    eprintln!("{}", err)
+                }
             }
         }
 
-        if !self.overwrite_tests {
+        if updated_tests == 0 && !self.overwrite_tests {
             println!(
                 "ran {} {} tests with {} and {}\n",
                 total_tests,
@@ -412,14 +441,91 @@ impl TestConfig {
             );
         }
 
-        if can_be_fixed_with_overwrite_tests > 0 {
-            println!("Looks like you have failing tests. Review the output of each and fix any unexpected differences. When finished, you can use the --overwrite flag to automatically write the new output to the {} failing test file(s)", can_be_fixed_with_overwrite_tests);
+        if can_be_fixed_with_overwrite_tests > 0 && !self.interactive {
+            println!("Looks like you have failing tests. Review the output of each and fix any unexpected differences. When finished, you can use the --overwrite flag to automatically write the new output to all {} failing test file(s) or the --interactive (-i) flag to review each file's diff one by one.", can_be_fixed_with_overwrite_tests);
         }
 
         if failing_tests != 0 {
             Err(())
         } else {
             Ok(())
+        }
+    }
+
+    /// Review each failing test one by one, letting the user accept or reject the change, quit,
+    /// or accept all changes. Accepted changes will overwrite the source file's expected output with the new output.
+    fn review_interactively(&self, outputs: &mut [(InnerTestResult<()>, Option<PendingOverwrite>)]) {
+        let mut accept_all = false;
+
+        for (result, pending) in outputs.iter_mut() {
+            let pending = match pending.take() {
+                Some(pending) => pending,
+                None => continue,
+            };
+
+            if let Err(file_diff) = result {
+                println!("{file_diff}");
+            }
+
+            let accept = accept_all || {
+                match prompt_review() {
+                    ReviewChoice::Yes => true,
+                    ReviewChoice::No => false,
+                    ReviewChoice::AcceptAll => {
+                        accept_all = true;
+                        true
+                    }
+                    ReviewChoice::Quit => break,
+                }
+            };
+
+            if accept {
+                match overwrite_test(&pending.file, self, &pending.output, &pending.test) {
+                    Ok(()) => {
+                        if let Err(InnerTestError::TestFailed { path, errors }) = result {
+                            *result = Err(InnerTestError::TestUpdated {
+                                path: std::mem::take(path),
+                                errors: std::mem::take(errors),
+                            });
+                        }
+                    }
+                    Err(err) => {
+                        *result = Err(InnerTestError::IoError(pending.file.clone(), err));
+                    }
+                }
+            }
+        }
+    }
+}
+
+enum ReviewChoice {
+    Yes,
+    No,
+    Quit,
+    AcceptAll,
+}
+
+/// Prompt the user on stdin for how to handle the current failing test file
+fn prompt_review() -> ReviewChoice {
+    use std::io::BufRead;
+
+    let stdin = std::io::stdin();
+    loop {
+        print!("Accept these changes? [y]es / [n]o / [q]uit / [a]ccept all: ");
+        // Ensure the above is printed before we ask for input below
+        let _ = std::io::stdout().flush();
+
+        let mut line = String::new();
+        match stdin.lock().read_line(&mut line) {
+            Ok(0) => return ReviewChoice::No, // EOF
+            Ok(_) => match line.trim() {
+                "y" | "Y" | "yes" => return ReviewChoice::Yes,
+                "n" | "N" | "no" => return ReviewChoice::No,
+                "q" | "Q" | "quit" => return ReviewChoice::Quit,
+                "a" | "A" | "accept" | "accept all" => return ReviewChoice::AcceptAll,
+                _ => continue,
+            },
+            Err(_) => return ReviewChoice::No,
         }
     }
 }

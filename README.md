@@ -158,9 +158,9 @@ Here is the full set of keywords goldentests looks for in the file:
 - `expected stdout: <multi-line-string>`: This keyword will continue reading characters, appending
   them to the expected stdout output until it reaches a line that does not start with the test prefix
   ("// " in the example above). If the stdout when running the program differs from the string given here,
-  an appropriate error will be issued with a given diff. Defaults to `""`.
+  an appropriate error will be issued with a given diff. Defaults to `""`. Leading and trailing whitespace is trimmed.
 - `expected stderr: <multi-line-string>`: The same as `expected stdout:` but for the `stderr` stream. Also
-  defaults to `""`.
+  defaults to `""`. Leading and trailing whitespace is trimmed.
 - `expected exit status: [i32]`: If specified, goldentests will issue an error if the exit status differs
   to what is expected. Defaults to `None` (exit status is ignored by default).
 
@@ -176,6 +176,10 @@ flag when running goldentests as a standalone program, or by setting the
 the expected output in each file so that it matches the actual output. Since
 this is all automatic, make sure to manually review any changes before using
 this flag.
+
+Alternatively, you can pass the `--interactive` (`-i`) flag to review each
+failing test file one at a time. Goldentests will show the diff for each failing file
+and prompt you to accept and overwrite that file, or reject the change and continue.
 
 ### Features
 
