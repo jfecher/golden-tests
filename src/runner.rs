@@ -242,6 +242,11 @@ fn overwrite_test(test_path: &PathBuf, config: &TestConfig, output: &Output, tes
         &config.test_stdout_prefix,
         &output.stdout,
     )?;
+    // Write an empty line between expected stdout and stderr to separate
+    // the two multi-line outputs if necessary
+    if !output.stdout.is_empty() && !output.stderr.is_empty() {
+        writeln!(file, "")?;
+    }
     write_expected_output_for_stream(
         &mut file,
         &config.test_line_prefix,

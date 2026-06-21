@@ -1,3 +1,7 @@
+# 1.4.4
+
+- Fixed an `--overwrite` bug where the expected stdout and stderr would sometimes not be separated by an empty line
+
 # 1.4.3
 
 - Added `--interactive`/`-i` flag to review failing test files one by one

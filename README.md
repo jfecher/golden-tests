@@ -164,6 +164,8 @@ Here is the full set of keywords goldentests looks for in the file:
 - `expected exit status: [i32]`: If specified, goldentests will issue an error if the exit status differs
   to what is expected. Defaults to `None` (exit status is ignored by default).
 
+> Important! Note that when specifying both the expected stdout and stderr, they should be separated by an empty line!
+> otherwise, golden-tests won't know where each multi-line string is meant to end.
 
 You can even configure the specific keywords used if you want. For any further information,
 check out goldentest's documentation [here](https://docs.rs/goldentests).
